@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Broadside — Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&family=Kaushan+Script&family=Lora:ital,wght@1,500;1,600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   BROADSIDE — design tokens
+   Extracted from the "Graphic Design Prompts for Claude"
+   carousel. A gritty, editorial poster system for swipe-through
+   content. Every value below is the single source of truth.
+   ============================================================ */
+:root{
+  /* ---- Paper stock ---- */
+  --paper-100:#f7f4ec;  /* lightest — card & phone screens        */
+  --paper-200:#f1ede3;  /* page background base                   */
+  --paper-300:#e7e1d4;  /* recessed panel                         */
+  --paper-400:#dcd5c5;  /* borders on paper, muted fills          */
+
+  /* ---- Ink ---- */
+  --ink:#16120e;        /* primary — display caps, body           */
+  --ink-soft:#2c2721;   /* secondary headings                     */
+  --muted:#8c867a;      /* meta, page counter, handle             */
+  --ghost:#d8d2c5;      /* giant ghosted slide number             */
+
+  /* ---- Rust: the one accent ---- */
+  --rust:#bb5230;       /* highlights, sunburst, key words        */
+  --rust-deep:#97401f;  /* pressed / hover                        */
+  --rust-tint:#e2bca6;  /* soft fills, tags                       */
+
+  --line:rgba(22,18,14,.16);
+  --line-strong:rgba(22,18,14,.32);
+
+  /* ---- Type ---- */
+  --font-poster:"Anton",sans-serif;        /* ultra-condensed caps */
+  --font-heavy:"Archivo",system-ui,sans-serif; /* heavy grotesque  */
+  --font-body:"Inter",system-ui,sans-serif;
+  --font-serif:"Lora",Georgia,serif;       /* italic subtitle      */
+  --font-script:"Kaushan Script",cursive;
+
+  --step-caption:.75rem;
+  --step-small:.875rem;
+  --step-body:1rem;
+  --step-lead:1.1875rem;
+  --step-h2:1.5rem;
+  --step-h1:2.25rem;
+  --step-statement:clamp(1.75rem,4vw,2.75rem);
+  --step-poster:clamp(3rem,11vw,7rem);
+
+  /* ---- Space (4pt) ---- */
+  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px;
+  --s-5:24px; --s-6:32px; --s-7:48px; --s-8:64px; --s-9:96px;
+
+  /* ---- Radius ---- */
+  --r-sm:6px; --r-md:12px; --r-lg:20px; --r-pill:999px;
+
+  /* ---- Elevation ---- */
+  --shadow-sm:0 4px 14px rgba(22,18,14,.10);
+  --shadow-md:0 18px 44px rgba(22,18,14,.16);
+
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+
+/* ============================================================
+   Reset & paper atmosphere
+   ============================================================ */
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font-body);
+  color:var(--ink);
+  background:var(--paper-200);
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  position:relative;
+}
+/* paper grain */
+body::after{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity:.05;mix-blend-mode:multiply;
+}
+.wrap{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:0 var(--s-5)}
+
+/* ============================================================
+   Top bar (kicker + page counter, like each slide's header)
+   ============================================================ */
+.topbar{display:flex;justify-content:space-between;align-items:center;
+  padding:var(--s-6) 0;border-bottom:2px solid var(--ink)}
+.kicker{font-family:var(--font-heavy);font-weight:800;font-size:var(--step-caption);
+  letter-spacing:.18em;text-transform:uppercase}
+.counter{font-family:var(--font-poster);font-size:var(--step-body);color:var(--muted);letter-spacing:.04em}
+
+/* ============================================================
+   Hero — the signature
+   ============================================================ */
+.hero{position:relative;overflow:hidden;padding:var(--s-9) 0 var(--s-8);text-align:center}
+.sunburst{position:absolute;left:50%;top:56%;width:min(760px,120vw);aspect-ratio:1;
+  transform:translate(-50%,-50%) rotate(-4deg);z-index:0;pointer-events:none;
+  background:repeating-conic-gradient(from 6deg at 50% 50%,
+    var(--rust) 0deg 6deg, transparent 6deg 19deg);
+  -webkit-mask-image:radial-gradient(ellipse 60% 55% at 50% 50%,#000 28%,transparent 70%);
+  mask-image:radial-gradient(ellipse 60% 55% at 50% 50%,#000 28%,transparent 70%);
+  opacity:.85}
+.hero-kicker{position:relative;z-index:2;font-family:var(--font-heavy);font-weight:800;
+  text-transform:uppercase;letter-spacing:.06em;font-size:var(--step-h2);color:var(--ink)}
+.poster{position:relative;z-index:2;font-family:var(--font-poster);
+  text-transform:uppercase;line-height:.86;letter-spacing:.005em;
+  font-size:var(--step-poster);color:var(--ink);margin:var(--s-2) 0 var(--s-4)}
+.poster em{font-style:normal;color:var(--rust)}
+.hero-serif{position:relative;z-index:2;font-family:var(--font-serif);font-style:italic;
+  font-weight:500;font-size:var(--step-lead);color:var(--ink-soft)}
+.hero-script{position:relative;z-index:2;display:block;font-family:var(--font-script);
+  font-size:clamp(2rem,6vw,3.25rem);color:var(--ink);margin-top:var(--s-2);transform:rotate(-3deg)}
+
+/* ============================================================
+   Section scaffolding
+   ============================================================ */
+.section{padding:var(--s-8) 0;border-top:2px solid var(--ink)}
+.section-head{margin-bottom:var(--s-6)}
+.section-head .num{font-family:var(--font-poster);font-size:var(--step-caption);color:var(--rust);letter-spacing:.1em}
+.section-head h2{font-family:var(--font-poster);text-transform:uppercase;
+  font-size:var(--step-h1);letter-spacing:.01em;line-height:.95;margin:var(--s-1) 0}
+.section-head p{color:var(--ink-soft);font-size:var(--step-small);max-width:52ch}
+.grid{display:grid;gap:var(--s-4)}
+
+/* ---- Color ---- */
+.swatches{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.swatch{border:1.5px solid var(--ink);border-radius:var(--r-md);overflow:hidden;
+  background:var(--paper-100);cursor:pointer;transition:transform .22s var(--ease)}
+.swatch:hover,.swatch:focus-visible{transform:translateY(-4px);outline:none;box-shadow:var(--shadow-sm)}
+.swatch .chip{height:84px;border-bottom:1.5px solid var(--ink)}
+.swatch .info{padding:10px 12px 12px}
+.swatch .name{font-weight:700;font-size:var(--step-small)}
+.swatch .hex{color:var(--muted);font-size:var(--step-caption);text-transform:uppercase;margin-top:2px}
+.swatch .role{color:var(--muted);font-size:var(--step-caption);margin-top:6px;line-height:1.3}
+
+/* ---- Type specimens ---- */
+.type-row{border:1.5px solid var(--ink);border-radius:var(--r-md);padding:var(--s-5);background:var(--paper-100)}
+.type-row+.type-row{margin-top:var(--s-3)}
+.type-label{font-family:var(--font-heavy);font-weight:800;font-size:var(--step-caption);
+  letter-spacing:.14em;text-transform:uppercase;color:var(--rust);display:block;margin-bottom:var(--s-3)}
+.type-meta{font-size:var(--step-caption);color:var(--muted);margin-top:var(--s-2)}
+.spec-poster{font-family:var(--font-poster);text-transform:uppercase;line-height:.9;
+  font-size:clamp(2.5rem,8vw,4rem);letter-spacing:.01em}
+.spec-heavy{font-family:var(--font-heavy);font-weight:800;font-size:var(--step-statement);line-height:1.05}
+.spec-heavy .hl{color:var(--rust)}
+.spec-body{font-size:var(--step-body);color:var(--ink-soft)}
+.spec-serif{font-family:var(--font-serif);font-style:italic;font-weight:500;font-size:var(--step-lead);color:var(--ink-soft)}
+.spec-script{font-family:var(--font-script);font-size:2.4rem}
+.spec-caption{font-family:var(--font-heavy);font-weight:800;text-transform:uppercase;letter-spacing:.16em;font-size:var(--step-caption)}
+
+/* ---- Scale tokens ---- */
+.token-list{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.token{border:1.5px solid var(--ink);border-radius:var(--r-md);padding:var(--s-4);background:var(--paper-100);
+  display:flex;align-items:center;gap:var(--s-4)}
+.token .bar{height:14px;background:var(--rust);border-radius:2px}
+.token .box{background:var(--paper-300);border:1.5px solid var(--ink);width:56px;height:56px;flex:none}
+.token .t{font-size:var(--step-small)}
+.token .t code{font-weight:700}
+.token .t small{display:block;color:var(--muted);font-size:var(--step-caption)}
+
+/* ---- Signature demos ---- */
+.sig{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.demo{border:1.5px solid var(--ink);border-radius:var(--r-lg);height:190px;position:relative;overflow:hidden;
+  background:var(--paper-100);display:flex;align-items:flex-end;padding:var(--s-4)}
+.demo span{position:relative;z-index:3;font-family:var(--font-heavy);font-weight:800;
+  font-size:var(--step-caption);letter-spacing:.14em;text-transform:uppercase}
+.demo.burst::before{content:"";position:absolute;inset:-30%;z-index:1;
+  background:repeating-conic-gradient(from 6deg at 50% 50%,var(--rust) 0 6deg,transparent 6deg 19deg);
+  -webkit-mask-image:radial-gradient(circle at 50% 50%,#000 22%,transparent 62%);
+  mask-image:radial-gradient(circle at 50% 50%,#000 22%,transparent 62%);opacity:.8}
+.demo.ghostnum::before{content:"#7";position:absolute;right:-6px;bottom:-34px;z-index:1;
+  font-family:var(--font-poster);font-size:11rem;color:var(--ghost);line-height:1}
+.demo.hl-demo{align-items:center;padding:var(--s-5)}
+.demo.hl-demo p{font-family:var(--font-heavy);font-weight:800;font-size:1.3rem;line-height:1.1;z-index:3}
+.demo.hl-demo .hl{color:var(--rust)}
+.demo.grain::before{content:"";position:absolute;inset:0;z-index:1;opacity:.5;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* ---- Components ---- */
+.comp{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.card{border:1.5px solid var(--ink);border-radius:var(--r-lg);padding:var(--s-5);background:var(--paper-100)}
+.card h3{font-family:var(--font-poster);text-transform:uppercase;font-size:var(--step-h2);margin-bottom:var(--s-2)}
+.card p.cap{font-size:var(--step-small);color:var(--muted)}
+.slot{margin-top:var(--s-4);display:flex;flex-wrap:wrap;gap:var(--s-3);align-items:center}
+
+.btn{font-family:var(--font-heavy);font-weight:800;font-size:var(--step-small);
+  border-radius:var(--r-pill);padding:12px 22px;border:2px solid var(--ink);cursor:pointer;
+  transition:transform .18s var(--ease),background .18s var(--ease);text-transform:uppercase;letter-spacing:.04em}
+.btn:focus-visible{outline:2px solid var(--rust);outline-offset:3px}
+.btn-ink{background:var(--ink);color:var(--paper-100)}
+.btn-ink:hover{transform:translateY(-2px)}
+.btn-rust{background:var(--rust);color:var(--paper-100);border-color:var(--rust)}
+.btn-rust:hover{background:var(--rust-deep);border-color:var(--rust-deep);transform:translateY(-2px)}
+.btn-ghost{background:transparent;color:var(--ink)}
+.btn-ghost:hover{background:var(--paper-300);transform:translateY(-2px)}
+.btn .bm{margin-left:8px}
+
+.tag{display:inline-flex;align-items:center;font-family:var(--font-heavy);font-weight:700;
+  font-size:var(--step-caption);letter-spacing:.1em;text-transform:uppercase;padding:6px 12px;
+  border-radius:var(--r-sm);background:var(--rust-tint);color:var(--rust-deep)}
+.tag.ink{background:var(--ink);color:var(--paper-100)}
+
+/* prompt / quote box (image 3) */
+.quote{border:2px solid var(--ink);border-radius:var(--r-lg);padding:var(--s-5);
+  font-family:var(--font-body);font-style:italic;font-weight:500;font-size:var(--step-body);line-height:1.5}
+.label{font-family:var(--font-heavy);font-weight:800;text-transform:uppercase;letter-spacing:.04em;
+  font-size:var(--step-body);margin:var(--s-4) 0 var(--s-2)}
+
+/* handle */
+.handle{font-family:var(--font-body);font-size:var(--step-small);color:var(--muted)}
+
+/* ============================================================
+   Slide templates — the reusable carousel archetypes
+   ============================================================ */
+.slides{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--s-5)}
+.slide{aspect-ratio:4/5;border:1.5px solid var(--ink);border-radius:var(--r-md);
+  background:var(--paper-100);padding:16px;position:relative;overflow:hidden;
+  display:flex;flex-direction:column;box-shadow:var(--shadow-sm)}
+.slide .sc{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);
+  font-family:var(--font-heavy);font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.slide .big{font-family:var(--font-poster);text-transform:uppercase;line-height:.86;font-size:clamp(1.4rem,5vw,2.2rem)}
+.slide .big em{font-style:normal;color:var(--rust)}
+.slide .sm{font-family:var(--font-serif);font-style:italic;font-size:11px;color:var(--ink-soft)}
+.slide .stmt{font-family:var(--font-heavy);font-weight:800;font-size:clamp(.95rem,3vw,1.15rem);line-height:1.1}
+.slide .stmt .hl{color:var(--rust)}
+.slide .miniq{border:1.5px solid var(--ink);border-radius:8px;padding:8px;font-style:italic;
+  font-size:10px;line-height:1.35;color:var(--ink-soft)}
+.slide .why{font-family:var(--font-heavy);font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin-top:6px}
+.slide .body{font-size:10px;color:var(--ink-soft);line-height:1.4}
+.slide .gnum{position:absolute;right:-8px;bottom:-20px;font-family:var(--font-poster);
+  font-size:6rem;color:var(--ghost);line-height:1;z-index:0}
+.slide .burstmini{position:absolute;inset:-20% 0 auto;height:70%;top:35%;z-index:0;
+  background:repeating-conic-gradient(from 6deg at 50% 50%,var(--rust) 0 6deg,transparent 6deg 19deg);
+  -webkit-mask-image:radial-gradient(circle at 50% 50%,#000 20%,transparent 60%);
+  mask-image:radial-gradient(circle at 50% 50%,#000 20%,transparent 60%);opacity:.7}
+.slide>*{position:relative;z-index:1}
+.slide .grow{flex:1}
+.slide .tpl{position:absolute;left:12px;bottom:10px;font-size:8px;color:var(--muted);
+  font-family:var(--font-heavy);font-weight:800;letter-spacing:.1em;text-transform:uppercase;z-index:2}
+
+/* ============================================================
+   Footer
+   ============================================================ */
+.foot{border-top:2px solid var(--ink);padding:var(--s-7) 0 var(--s-8);
+  display:flex;justify-content:space-between;align-items:flex-end;gap:var(--s-4);flex-wrap:wrap}
+.foot .mark{font-family:var(--font-poster);text-transform:uppercase;font-size:var(--step-h2)}
+.foot .credit{font-size:var(--step-caption);color:var(--muted);max-width:44ch}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);z-index:40;
+  background:var(--ink);color:var(--paper-100);padding:10px 18px;border-radius:var(--r-pill);
+  font-size:var(--step-small);opacity:0;pointer-events:none;transition:.25s var(--ease)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+@media (max-width:600px){
+  .topbar{flex-direction:column;gap:var(--s-2);align-items:flex-start}
+  .foot{flex-direction:column;align-items:flex-start}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="topbar">
+    <span class="kicker">Broadside · Design System</span>
+    <span class="counter">v1.0</span>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="sunburst"></div>
+    <p class="hero-kicker">A poster system for</p>
+    <h1 class="poster">BROAD<em>SIDE</em></h1>
+    <p class="hero-serif">Loud type, warm paper, one burnt accent — built to be swiped.</p>
+    <span class="hero-script">carousels that stop the scroll</span>
+  </section>
+
+  <!-- 01 Color -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">01</span>
+      <h2>Color</h2>
+      <p>Warm paper, black ink, one burnt-rust accent. That's the whole kit — the accent earns its keep by staying rare. Click a swatch to copy it.</p>
+    </div>
+    <div class="grid swatches" id="swatches"></div>
+  </section>
+
+  <!-- 02 Type -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">02</span>
+      <h2>Typography</h2>
+      <p>Five voices, strict hierarchy. Condensed caps shout, heavy grotesque states, the serif whispers, the script signs off, and Inter carries the reading.</p>
+    </div>
+    <div class="type-row">
+      <span class="type-label">Poster — Anton · condensed caps</span>
+      <div class="spec-poster">Client Mind Reader</div>
+      <div class="type-meta">One to three words. Titles, cover words, section heads. Uppercase, line-height .86.</div>
+    </div>
+    <div class="type-row">
+      <span class="type-label">Statement — Archivo · 800, rust keywords</span>
+      <div class="spec-heavy">These <span class="hl">9 prompts</span> will level up your <span class="hl">design</span> work</div>
+      <div class="type-meta">Multi-word headlines. Colour the two or three load-bearing words rust, leave the rest ink.</div>
+    </div>
+    <div class="type-row">
+      <span class="type-label">Serif accent — Lora · italic</span>
+      <div class="spec-serif">Instantly level up your work using Claude.ai!</div>
+      <div class="type-meta">One line only — the human aside under a poster title.</div>
+    </div>
+    <div class="type-row">
+      <span class="type-label">Script — Kaushan · handwritten</span>
+      <div class="spec-script">9 prompts</div>
+      <div class="type-meta">A single flourish per slide. Never for information you need read cleanly.</div>
+    </div>
+    <div class="type-row">
+      <span class="type-label">Body — Inter · 400 / italic for quotes</span>
+      <div class="spec-body">Inter carries the paragraphs and UI. Set at 16px / 1.55. Prompt text and pull-quotes run in italic to separate the client's words from yours.</div>
+    </div>
+    <div class="type-row">
+      <span class="type-label">Label — Archivo · 800, tracked caps</span>
+      <div class="spec-caption">Why it works:</div>
+    </div>
+  </section>
+
+  <!-- 03 Space & radius -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">03</span>
+      <h2>Space &amp; Radius</h2>
+      <p>4-point spacing, generous margins so the paper breathes, softly rounded corners on every box and pill.</p>
+    </div>
+    <div class="grid token-list">
+      <div class="token"><div class="bar" style="width:8px"></div><div class="t"><code>--s-2</code><small>8px · inline</small></div></div>
+      <div class="token"><div class="bar" style="width:16px"></div><div class="t"><code>--s-4</code><small>16px · padding</small></div></div>
+      <div class="token"><div class="bar" style="width:24px"></div><div class="t"><code>--s-5</code><small>24px · cards</small></div></div>
+      <div class="token"><div class="bar" style="width:48px"></div><div class="t"><code>--s-7</code><small>48px · blocks</small></div></div>
+      <div class="token"><div class="bar" style="width:96px"></div><div class="t"><code>--s-9</code><small>96px · hero</small></div></div>
+      <div class="token"><div class="box" style="border-radius:6px"></div><div class="t"><code>--r-sm</code><small>6px · tags</small></div></div>
+      <div class="token"><div class="box" style="border-radius:12px"></div><div class="t"><code>--r-md</code><small>12px · cards</small></div></div>
+      <div class="token"><div class="box" style="border-radius:20px"></div><div class="t"><code>--r-lg</code><small>20px · panels, quotes</small></div></div>
+      <div class="token"><div class="box" style="border-radius:999px"></div><div class="t"><code>--r-pill</code><small>buttons</small></div></div>
+    </div>
+  </section>
+
+  <!-- 04 Signature -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">04</span>
+      <h2>Signature</h2>
+      <p>Four devices give the system its grit. The sunburst is the star — the rest are supporting cast, used one at a time.</p>
+    </div>
+    <div class="grid sig">
+      <div class="demo burst"><span>Rust sunburst</span></div>
+      <div class="demo ghostnum"><span>Ghosted number</span></div>
+      <div class="demo hl-demo"><p>Rust <span class="hl">keyword</span> highlight</p></div>
+      <div class="demo grain"><span>Paper grain</span></div>
+    </div>
+  </section>
+
+  <!-- 05 Components -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">05</span>
+      <h2>Components</h2>
+      <p>Everything below is built from the tokens above — no stray values.</p>
+    </div>
+    <div class="grid comp">
+
+      <div class="card">
+        <h3>Buttons</h3>
+        <p class="cap">Ink is default, rust is the loud CTA, ghost is quiet. All pills, all bordered.</p>
+        <div class="slot">
+          <button class="btn btn-ink">Save post <span class="bm">&#128278;</span></button>
+          <button class="btn btn-rust">Comment</button>
+          <button class="btn btn-ghost">Read more</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Tags</h3>
+        <p class="cap">Rust-tint for topic labels, solid ink for counters.</p>
+        <div class="slot">
+          <span class="tag">Branding</span>
+          <span class="tag">Prompt</span>
+          <span class="tag ink">2 / 11</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Prompt box</h3>
+        <p class="cap">The bordered, rounded quote — where a copy-paste prompt lives.</p>
+        <div class="slot" style="display:block">
+          <div class="quote">"Act as an experienced branding expert. Identify what the client actually wants vs what they're saying: [paste brief]."</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Label + body</h3>
+        <p class="cap">A heavy tracked label answering the reader's "so what?".</p>
+        <div class="slot" style="display:block">
+          <div class="label">Why it works:</div>
+          <p class="spec-body">Clients rarely say what they mean. This reads between the lines so you ship what they actually expected.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Page counter</h3>
+        <p class="cap">Top-right on every slide so the reader tracks progress.</p>
+        <div class="slot"><span class="counter" style="font-size:1.4rem">3 / 11</span></div>
+      </div>
+
+      <div class="card">
+        <h3>Handle</h3>
+        <p class="cap">Bottom-right sign-off, muted so it never competes.</p>
+        <div class="slot"><span class="handle">@yourhandle</span></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 06 Slide templates -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">06</span>
+      <h2>Slide Templates</h2>
+      <p>Four archetypes cover a whole carousel. Every post is a cover, a run of content cards, and a CTA — the statement slide is optional.</p>
+    </div>
+    <div class="grid slides">
+
+      <div class="slide">
+        <div class="burstmini"></div>
+        <div class="sc"><span>Kicker</span><span>1 / 11</span></div>
+        <div class="grow" style="display:flex;flex-direction:column;justify-content:center;gap:6px;text-align:center">
+          <div class="big">CLA<em>UDE</em></div>
+          <div class="sm">Instantly level up your work</div>
+        </div>
+        <div class="tpl">Cover</div>
+      </div>
+
+      <div class="slide">
+        <div class="sc"><span></span><span>1 / 11</span></div>
+        <div class="stmt">These <span class="hl">9 prompts</span> will level up your <span class="hl">design</span> work:</div>
+        <div class="grow"></div>
+        <div style="align-self:flex-end"><span class="tag ink" style="font-size:8px">Save post</span></div>
+        <div class="tpl">Statement</div>
+      </div>
+
+      <div class="slide">
+        <div class="gnum">1</div>
+        <div class="sc"><span></span><span>2 / 11</span></div>
+        <div class="big" style="font-size:1.5rem">Client Mind Reader</div>
+        <div class="miniq" style="margin-top:8px">"Identify what the client actually wants vs what they're saying: [paste brief]."</div>
+        <div class="why">Why it works:</div>
+        <div class="body">Clients rarely communicate clearly. Read between the lines.</div>
+        <div class="tpl">Content card</div>
+      </div>
+
+      <div class="slide">
+        <div class="sc"><span></span><span>11 / 11</span></div>
+        <div class="grow" style="display:flex;flex-direction:column;justify-content:center;gap:2px">
+          <div class="big">"COMMENT"</div>
+          <div class="big"><em>PROMPT</em></div>
+          <div class="stmt" style="margin-top:6px">for the full copy-paste version</div>
+        </div>
+        <div class="tpl">CTA</div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span class="mark">Broadside</span>
+    <p class="credit">Aesthetic extracted from the "Graphic Design Prompts for Claude" carousel by @sifuyik. Palette, type and layout generalized for reuse; original copy and artwork remain the author's.</p>
+  </footer>
+
+</div>
+
+<div class="toast" id="toast">Copied</div>
+
+<script>
+const TOKENS=[
+  ["--paper-100","#f7f4ec","Cards, phone screens"],
+  ["--paper-200","#f1ede3","Page background"],
+  ["--paper-300","#e7e1d4","Recessed panel"],
+  ["--paper-400","#dcd5c5","Borders, muted fills"],
+  ["--ink","#16120e","Display & body text"],
+  ["--ink-soft","#2c2721","Secondary text"],
+  ["--muted","#8c867a","Meta, counter, handle"],
+  ["--ghost","#d8d2c5","Giant slide numbers"],
+  ["--rust","#bb5230","Accent — keywords, sunburst"],
+  ["--rust-deep","#97401f","Pressed / hover"],
+  ["--rust-tint","#e2bca6","Soft tag fills"],
+];
+const host=document.getElementById("swatches");
+TOKENS.forEach(([name,hex,role])=>{
+  const el=document.createElement("button");
+  el.className="swatch";el.type="button";
+  el.innerHTML=`<div class="chip" style="background:${hex}"></div>
+    <div class="info"><div class="name">${name}</div>
+    <div class="hex">${hex}</div><div class="role">${role}</div></div>`;
+  el.addEventListener("click",()=>copy(hex));
+  host.appendChild(el);
+});
+const toast=document.getElementById("toast");let t;
+function copy(v){
+  navigator.clipboard?.writeText(v);
+  toast.textContent=v+" copied";toast.classList.add("show");
+  clearTimeout(t);t=setTimeout(()=>toast.classList.remove("show"),1400);
+}
+</script>
+</body>
+</html>

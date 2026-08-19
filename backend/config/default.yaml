@@ -1,0 +1,38 @@
+corpus:
+  languages: [hi, bn, ta, te, kn, mr, gu, ml, pa, or, ur, ne, as, sa]
+  passages_per_language: null  # calibrated in Phase 1.5 from measured T4 throughput — never the spec's flat 50000 default, it doesn't fit the build window
+  seed: 42
+
+chunking:
+  active_strategy: recursive_512
+  strategies: [fixed_256_overlap_64, recursive_512, semantic_breakpoint, late_chunking, metadata_aware]
+
+retrieval:
+  dense_top_k: 50
+  sparse_top_k: 50
+  rrf_k: 60
+  rerank_candidates: 20
+  final_top_k: 5
+  ef_search: 64
+
+guardrails:
+  tau_abs: null          # calibrated, not guessed
+  tau_margin: null       # calibrated, not guessed
+  grounding_threshold: null
+  enable_input: true
+  enable_retrieval_gate: true
+  enable_grounding: true
+
+generation:
+  primary: groq
+  primary_model: llama-3.1-8b-instant
+  failover: cerebras
+  max_tokens: 60
+  context_token_budget: 1200
+
+harness:
+  max_retries: 3
+  stage_timeout_ms: {encode: 100, retrieve: 100, rerank: 100, generate: 2000}
+  total_deadline_ms: 5000
+  breaker_failure_threshold: 5
+  breaker_cooldown_s: 30
