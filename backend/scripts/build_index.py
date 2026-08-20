@@ -25,11 +25,18 @@ DONE_MARKER = "BUILD_COMPLETE"
 # with batch_size * seq_len^2. Most MS-MARCO passages are short (median ~55 words, see
 # plan notes) but the tail runs long (observed max ~2285 words -> truncates to
 # MAX_SEQ_LEN=512 tokens) — a batch that happens to contain one such outlier pads
-# everything in it to 512, and at batch=256 that made ONNX Runtime request a single
-# ~2.3GB allocation and crash on this machine's 16GB RAM. 32 keeps the worst case
-# (batch=32, seq_len=512) around a few hundred MB, safely inside budget even under
-# memory pressure from everything else running alongside this build.
-ENCODE_BATCH = 32
+# everything in it to 512.
+#
+# CPU path: at batch=256 that made ONNX Runtime request a single ~2.3GB allocation and
+# crash under this machine's shared 16GB system RAM (competing with everything else
+# running). 32 keeps the worst case safely inside budget even under memory pressure.
+#
+# GPU path: fp16 on a dedicated 6GB VRAM pool (RTX 4050, not shared with the OS/other
+# apps the way system RAM is) has real headroom for a much larger batch. Benchmarked
+# live on this GPU post-warm-up: 32->1168/s, 128->3391/s, 256->4062/s passages/sec —
+# 256 is the batch size actually used, ~9x the ideal CPU calibration's 438/s.
+ENCODE_BATCH_CPU = 32
+ENCODE_BATCH_GPU = 256
 
 
 def load_documents(corpus_path: Path) -> list[Document]:
@@ -68,12 +75,13 @@ def dense_vectors_for(strategy_name: str, chunks: list[Chunk], encoder: E5Encode
     if strategy_name == "late_chunking":
         return np.vstack([c.extra["context_vector"] for c in chunks]).astype("float32")
 
+    batch_size = ENCODE_BATCH_GPU if encoder.device == "cuda" else ENCODE_BATCH_CPU
     vectors = []
-    for start in range(0, len(chunks), ENCODE_BATCH):
-        batch = chunks[start : start + ENCODE_BATCH]
+    for start in range(0, len(chunks), batch_size):
+        batch = chunks[start : start + batch_size]
         vectors.append(encoder.encode_passages([c.text for c in batch]))
-        if (start // ENCODE_BATCH) % 20 == 0:
-            print(f"    encoded {min(start + ENCODE_BATCH, len(chunks))}/{len(chunks)} chunks", flush=True)
+        if (start // batch_size) % 20 == 0:
+            print(f"    encoded {min(start + batch_size, len(chunks))}/{len(chunks)} chunks", flush=True)
     return np.vstack(vectors).astype("float32")
 
 

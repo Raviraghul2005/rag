@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from optimum.onnxruntime import ORTModelForFeatureExtraction, ORTQuantizer
 from optimum.onnxruntime.configuration import AutoQuantizationConfig
-from transformers import AutoTokenizer
+from transformers import AutoModel, AutoTokenizer
 
 MODEL_ID = "intfloat/multilingual-e5-small"
 MAX_SEQ_LEN = 512  # verified: config.json max_position_embeddings
@@ -19,16 +19,34 @@ _DEFAULT_CACHE = Path(os.environ.get("RAINGOA_MODEL_CACHE", r"D:\dev-cache\raing
 
 
 class E5Encoder:
+    """Two backends, chosen automatically by what's available:
+
+    - GPU present (local dev machine building the corpus/index): plain PyTorch, fp16,
+      no ONNX/quantization. int8 CPU quantization exists specifically to make ONNX
+      Runtime's CPU execution provider fast — it doesn't help a GPU and the model
+      wouldn't even load that way here.
+    - No GPU (the deployed backend — Railway has none): the original ONNX int8-CPU
+      path, byte-for-byte unchanged from before this class supported CUDA at all. The
+      one-time index build is what benefits from a GPU; the deployed serving path
+      (query encoding) never sees this branch and its behavior is untouched.
+    """
+
     def __init__(self, cache_dir: Path = _DEFAULT_CACHE):
-        self._quantized_dir = cache_dir / "multilingual-e5-small-int8"
         self.tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-        quantized_dir = self._load_or_quantize(cache_dir)
-        # quantizer.quantize() writes "model_quantized.onnx", not the "model.onnx"
-        # from_pretrained looks for by default — must be named explicitly or it
-        # silently mismatches and falls back to picking whatever .onnx file it finds.
-        self.model = ORTModelForFeatureExtraction.from_pretrained(
-            quantized_dir, file_name="model_quantized.onnx"
-        )
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        if self.device == "cuda":
+            self.model = AutoModel.from_pretrained(MODEL_ID, torch_dtype=torch.float16).to("cuda")
+            self.model.eval()
+        else:
+            self._quantized_dir = cache_dir / "multilingual-e5-small-int8"
+            quantized_dir = self._load_or_quantize(cache_dir)
+            # quantizer.quantize() writes "model_quantized.onnx", not the "model.onnx"
+            # from_pretrained looks for by default — must be named explicitly or it
+            # silently mismatches and falls back to picking whatever .onnx file it finds.
+            self.model = ORTModelForFeatureExtraction.from_pretrained(
+                quantized_dir, file_name="model_quantized.onnx"
+            )
 
     def _load_or_quantize(self, cache_dir: Path) -> Path:
         if (self._quantized_dir / "model_quantized.onnx").exists():
@@ -51,9 +69,18 @@ class E5Encoder:
             truncation=True,
             return_tensors="pt",
         )
-        outputs = self.model(**inputs)
+        if self.device == "cuda":
+            inputs = {k: v.to("cuda") for k, v in inputs.items()}
+            with torch.no_grad():
+                outputs = self.model(**inputs)
+        else:
+            outputs = self.model(**inputs)
         pooled = _mean_pool(outputs.last_hidden_state, inputs["attention_mask"])
-        return torch.nn.functional.normalize(pooled, p=2, dim=1).numpy()
+        normalized = torch.nn.functional.normalize(pooled, p=2, dim=1)
+        # .float() before .numpy(): fp16 output on the CUDA path would otherwise hand
+        # back a float16 array — every downstream consumer (FAISS, cosine-similarity
+        # scoring) is typed for float32, matching the CPU/ONNX path's output dtype.
+        return normalized.float().cpu().numpy()
 
     def encode_queries(self, texts: list[str]) -> np.ndarray:
         return self._encode([f"query: {t}" for t in texts])
@@ -76,7 +103,12 @@ class E5Encoder:
             return_tensors="pt",
         )
         offsets = encoded.pop("offset_mapping")[0].tolist()
-        hidden = self.model(**encoded).last_hidden_state[0]
+        if self.device == "cuda":
+            encoded = {k: v.to("cuda") for k, v in encoded.items()}
+            with torch.no_grad():
+                hidden = self.model(**encoded).last_hidden_state[0]
+        else:
+            hidden = self.model(**encoded).last_hidden_state[0]
 
         prefix_len = len("passage: ")
         vectors: list[np.ndarray] = []
@@ -98,9 +130,8 @@ class E5Encoder:
             ]
             if token_ids:
                 pooled = hidden[token_ids].mean(dim=0)
-                vectors.append(
-                    torch.nn.functional.normalize(pooled, p=2, dim=0).detach().numpy()
-                )
+                normalized = torch.nn.functional.normalize(pooled, p=2, dim=0)
+                vectors.append(normalized.float().detach().cpu().numpy())
             else:
                 uncovered.append(i)
                 vectors.append(np.zeros(hidden.shape[-1], dtype=np.float32))
