@@ -60,7 +60,6 @@ export default function Home() {
 
       {/* Hero */}
       <section className="relative overflow-hidden py-16 text-center">
-        <div className="sunburst" />
         <p
           className="relative z-10 uppercase"
           style={{ fontFamily: "var(--font-heavy)", fontWeight: 800, letterSpacing: ".06em", fontSize: "var(--step-h2)" }}

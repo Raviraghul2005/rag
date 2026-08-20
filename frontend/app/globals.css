@@ -146,23 +146,3 @@ body::after {
 .rec-dot {
   animation: pulse-rec 1.6s ease-in-out infinite;
 }
-
-/* Sunburst — hand-painted rays, one signature device, used once (hero only) */
-.sunburst {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: min(760px, 120vw);
-  aspect-ratio: 1;
-  transform: translate(-50%, -50%) rotate(-4deg);
-  z-index: 0;
-  pointer-events: none;
-  background: repeating-conic-gradient(
-    from 6deg at 50% 50%,
-    var(--rust) 0deg 6deg,
-    transparent 6deg 19deg
-  );
-  -webkit-mask-image: radial-gradient(ellipse 60% 55% at 50% 50%, #000 28%, transparent 70%);
-  mask-image: radial-gradient(ellipse 60% 55% at 50% 50%, #000 28%, transparent 70%);
-  opacity: 0.85;
-}
