@@ -40,8 +40,11 @@ class GuardrailsConfig(BaseModel):
 class GenerationConfig(BaseModel):
     primary: str
     primary_model: str
+    primary_reasoning_effort: str | None = None
     failover: str
-    max_tokens: int
+    failover_model: str
+    max_tokens: int  # reported/enforced answer-length cap (spec §10's lever)
+    max_tokens_request: int  # raw API token budget; see generator.py's reasoning-model note
     context_token_budget: int
 
 

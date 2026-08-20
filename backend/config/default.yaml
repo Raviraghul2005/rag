@@ -26,10 +26,20 @@ guardrails:
   enable_grounding: true
 
 generation:
+  # llama-3.1-8b-instant was retired from Groq's catalog before this build reached
+  # Phase 6 (verified live against the account's key, 2026-08-20). openai/gpt-oss-20b
+  # is the closest surviving small/fast option, but it's a reasoning model: it spends
+  # part of any token budget on invisible chain-of-thought before the visible answer.
+  # See app/generation/generator.py and prompt.py for how max_tokens vs
+  # max_tokens_request is split to keep the spec's 60-token answer cap meaningful
+  # despite that.
   primary: groq
-  primary_model: llama-3.1-8b-instant
+  primary_model: openai/gpt-oss-20b
+  primary_reasoning_effort: low
   failover: cerebras
-  max_tokens: 60
+  failover_model: gpt-oss-120b
+  max_tokens: 60             # reported/enforced answer-length cap (spec §10's lever)
+  max_tokens_request: 100    # raw API budget, leaves room for reasoning-model overhead
   context_token_budget: 1200
 
 harness:

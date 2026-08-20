@@ -19,17 +19,23 @@ dependencies = [
     "optimum[onnxruntime]>=1.22",
     "faiss-cpu>=1.8",
     "datasets>=2.20",
+    "scipy>=1.14",
+    "openai>=1.50",
+    "httpx>=0.27",
+    "websockets>=13",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
+    "pytest-asyncio>=0.24",
     "httpx>=0.27",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 
 [tool.hatch.build.targets.wheel]
 packages = ["app", "config"]
