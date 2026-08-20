@@ -1,69 +1,69 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import { AnswerPanel } from "@/components/AnswerPanel";
+import { LanguageSelector } from "@/components/LanguageSelector";
+import { LatencyHud } from "@/components/LatencyHud";
+import { MicButton, STATUS_LABEL } from "@/components/MicButton";
+import { RefusalPanel } from "@/components/RefusalPanel";
+import { StrategySelector } from "@/components/StrategySelector";
+import { useVoiceSession } from "@/hooks/useVoiceSession";
+import { AUTO_DETECT } from "@/lib/languages";
 
 export default function Home() {
+  const [language, setLanguage] = useState(AUTO_DETECT.sarvamCode);
+  const [strategy, setStrategy] = useState<string | null>(null);
+  const { status, partialTranscript, finalTranscript, response, error, start, stop } =
+    useVoiceSession();
+
+  const handleMicClick = () => {
+    void start(language, strategy);
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-10">
+      <header className="flex flex-col gap-1">
+        <h1 className="font-mono text-sm uppercase tracking-widest text-text-faint">
+          RAGInGoa
+        </h1>
+        <p className="text-2xl font-semibold text-text">Voice RAG, measured.</p>
+      </header>
+
+      <div className="flex flex-wrap gap-4">
+        <LanguageSelector value={language} onChange={setLanguage} />
+        <StrategySelector value={strategy} onChange={setStrategy} />
+      </div>
+
+      <section className="flex flex-col items-center gap-4 rounded-lg border border-border bg-bg-panel px-6 py-10">
+        <MicButton status={status} onStart={handleMicClick} onStop={stop} />
+        <span className="font-mono text-xs uppercase tracking-wider text-text-dim">
+          {STATUS_LABEL[status]}
+        </span>
+
+        <div className="min-h-[3rem] w-full max-w-xl text-center">
+          {partialTranscript && (
+            <p className="text-lg text-text-dim">{partialTranscript}</p>
+          )}
+          {!partialTranscript && finalTranscript && (
+            <p className="text-lg text-text">{finalTranscript}</p>
+          )}
+        </div>
+
+        {error && (
+          <p className="rounded border border-danger/40 bg-danger/10 px-3 py-2 font-mono text-xs text-danger">
+            {error}
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+        )}
+      </section>
+
+      <LatencyHud timings={response?.timings ?? null} />
+
+      {response &&
+        (response.outcome === "answered" ? (
+          <AnswerPanel response={response} />
+        ) : (
+          <RefusalPanel response={response} />
+        ))}
+    </main>
   );
 }
