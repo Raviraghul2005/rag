@@ -10,14 +10,23 @@ interface Props {
 
 export function LanguageSelector({ value, onChange, detectedLanguage }: Props) {
   return (
-    <label className="flex flex-col gap-1">
-      <span className="font-mono text-[11px] uppercase tracking-wider text-text-faint">
-        language
+    <label className="flex flex-col gap-1.5">
+      <span
+        className="uppercase"
+        style={{ fontFamily: "var(--font-heavy)", fontWeight: 800, fontSize: "0.7rem", letterSpacing: ".1em", color: "var(--muted)" }}
+      >
+        Language
       </span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded border border-border-strong bg-bg-panel-raised px-3 py-2 font-mono text-sm text-text"
+        className="rounded-(--r-md) px-3 py-2"
+        style={{
+          border: "1.5px solid var(--ink)",
+          background: "var(--paper-100)",
+          color: "var(--ink)",
+          fontSize: "var(--step-small)",
+        }}
       >
         <option value={AUTO_DETECT.sarvamCode}>{AUTO_DETECT.label}</option>
         {LANGUAGES.map((lang) => (
@@ -27,7 +36,7 @@ export function LanguageSelector({ value, onChange, detectedLanguage }: Props) {
         ))}
       </select>
       {value === AUTO_DETECT.sarvamCode && detectedLanguage && (
-        <span className="font-mono text-[11px] text-accent">detected: {detectedLanguage}</span>
+        <span style={{ fontSize: "0.7rem", color: "var(--rust)" }}>detected: {detectedLanguage}</span>
       )}
     </label>
   );

@@ -7,12 +7,12 @@ interface Props {
 }
 
 const STATUS_LABEL: Record<VoiceStatus, string> = {
-  idle: "push to talk",
-  requesting_mic: "requesting mic…",
-  connecting: "connecting…",
-  listening: "listening — tap to stop",
-  processing: "processing…",
-  error: "error — tap to retry",
+  idle: "Push to talk",
+  requesting_mic: "Requesting mic…",
+  connecting: "Connecting…",
+  listening: "Listening — tap to stop",
+  processing: "Processing…",
+  error: "Error — tap to retry",
 };
 
 export function MicButton({ status, onStart, onStop }: Props) {
@@ -25,16 +25,20 @@ export function MicButton({ status, onStart, onStop }: Props) {
       onClick={isActive ? onStop : onStart}
       disabled={isBusy}
       aria-pressed={isActive}
-      className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 transition-colors disabled:opacity-50 ${
-        isActive
-          ? "border-danger bg-danger/10 text-danger"
-          : "border-accent bg-accent/10 text-accent hover:bg-accent/20"
-      }`}
+      className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-2 transition-transform disabled:opacity-50"
+      style={{
+        borderColor: "var(--ink)",
+        background: isActive ? "var(--rust)" : "var(--paper-100)",
+        color: isActive ? "var(--paper-100)" : "var(--ink)",
+        boxShadow: "var(--shadow-sm)",
+      }}
+      onMouseDown={(e) => (e.currentTarget.style.transform = "translateY(1px)")}
+      onMouseUp={(e) => (e.currentTarget.style.transform = "translateY(0)")}
     >
       {isActive ? (
-        <span className="rec-dot h-4 w-4 rounded-full bg-danger" />
+        <span className="rec-dot h-4 w-4 rounded-full" style={{ background: "var(--paper-100)" }} />
       ) : (
-        <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" className="h-9 w-9" aria-hidden="true">
           <path
             d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"
             stroke="currentColor"

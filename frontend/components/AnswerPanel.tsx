@@ -8,10 +8,23 @@ export function AnswerPanel({ response }: { response: PipelineResponse }) {
   const expandedChunk = response.cited_chunks.find((c) => c.chunk_id === expandedId) ?? null;
 
   return (
-    <div className="rounded-lg border border-ok/30 bg-bg-panel p-5">
+    <div
+      className="rounded-(--r-lg) p-6"
+      style={{ border: "2px solid var(--ink)", background: "var(--paper-100)" }}
+    >
       <div className="flex items-center justify-between">
-        <span className="font-mono text-xs uppercase tracking-wider text-ok">answered</span>
-        <div className="flex items-center gap-3 font-mono text-xs text-text-faint">
+        <span
+          className="uppercase"
+          style={{
+            fontFamily: "var(--font-heavy)",
+            fontWeight: 800,
+            fontSize: "var(--step-caption)",
+            letterSpacing: ".14em",
+          }}
+        >
+          Answered
+        </span>
+        <div className="flex items-center gap-3" style={{ fontSize: "var(--step-caption)", color: "var(--muted)" }}>
           {response.provider && <span>{response.provider}</span>}
           {response.grounding_score !== null && (
             <span title="Entailment probability from grounding verification">
@@ -21,19 +34,27 @@ export function AnswerPanel({ response }: { response: PipelineResponse }) {
         </div>
       </div>
 
-      <p className="mt-3 text-lg leading-relaxed text-text">{response.answer}</p>
+      <p className="mt-4" style={{ fontSize: "var(--step-lead)", lineHeight: 1.5, color: "var(--ink)" }}>
+        {response.answer}
+      </p>
 
       {response.cited_chunks.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-5 flex flex-wrap gap-2">
           {response.cited_chunks.map((chunk) => (
             <button
               key={chunk.chunk_id}
               type="button"
-              onClick={() =>
-                setExpandedId(expandedId === chunk.chunk_id ? null : chunk.chunk_id)
-              }
+              onClick={() => setExpandedId(expandedId === chunk.chunk_id ? null : chunk.chunk_id)}
               aria-expanded={expandedId === chunk.chunk_id}
-              className="rounded border border-border-strong bg-bg-panel-raised px-2 py-1 font-mono text-xs text-text-dim hover:border-accent hover:text-accent"
+              className="rounded-(--r-sm) px-3 py-1 uppercase"
+              style={{
+                fontFamily: "var(--font-heavy)",
+                fontWeight: 700,
+                fontSize: "var(--step-caption)",
+                letterSpacing: ".06em",
+                background: expandedId === chunk.chunk_id ? "var(--rust)" : "var(--rust-tint)",
+                color: expandedId === chunk.chunk_id ? "var(--paper-100)" : "var(--rust-deep)",
+              }}
             >
               [{chunk.chunk_id}]
             </button>
@@ -42,14 +63,19 @@ export function AnswerPanel({ response }: { response: PipelineResponse }) {
       )}
 
       {expandedChunk && (
-        <div className="mt-3 rounded border border-border bg-bg p-3">
-          <div className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] text-text-faint">
+        <div className="mt-4 rounded-(--r-md) p-4" style={{ border: "1.5px solid var(--ink)", background: "var(--paper-200)" }}>
+          <div
+            className="flex flex-wrap gap-x-4 gap-y-1"
+            style={{ fontSize: "var(--step-caption)", color: "var(--muted)" }}
+          >
             <span>lang {expandedChunk.language}</span>
             <span>dense {expandedChunk.dense_score.toFixed(3)}</span>
             <span>sparse {expandedChunk.sparse_score.toFixed(3)}</span>
             <span>fused {expandedChunk.fused_score.toFixed(3)}</span>
           </div>
-          <p className="mt-2 text-sm leading-relaxed text-text-dim">{expandedChunk.text}</p>
+          <p className="mt-2 italic" style={{ fontFamily: "var(--font-serif)", fontSize: "var(--step-body)", color: "var(--ink-soft)" }}>
+            {expandedChunk.text}
+          </p>
         </div>
       )}
     </div>

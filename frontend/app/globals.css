@@ -1,39 +1,86 @@
 @import "tailwindcss";
 
+/* ============================================================
+   BROADSIDE — design tokens, adapted from frontend/Insipiration/
+   broadside-design-system.html. Warm paper stock, ultra-condensed
+   black caps, one burnt-rust accent. A single committed light
+   identity — the system doesn't define a dark variant, and forcing
+   one would work against its own "paper, not screen-glow" principle.
+   ============================================================ */
 :root {
-  --bg: #0a0d10;
-  --bg-panel: #10151a;
-  --bg-panel-raised: #161c22;
-  --border: #232b32;
-  --border-strong: #35414a;
-  --text: #e8edf1;
-  --text-dim: #8a97a1;
-  --text-faint: #526069;
-  --accent: #4fd1c5;
-  --accent-dim: #2a5f5a;
-  --warn: #e8a33d;
-  --danger: #e8555f;
-  --ok: #4fd18a;
-  --font-mono: var(--font-geist-mono), "SF Mono", Consolas, monospace;
-  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  /* Paper stock */
+  --paper-100: #f7f4ec;
+  --paper-200: #f1ede3;
+  --paper-300: #e7e1d4;
+  --paper-400: #dcd5c5;
+
+  /* Ink */
+  --ink: #16120e;
+  --ink-soft: #2c2721;
+  --muted: #8c867a;
+  --ghost: #d8d2c5;
+
+  /* Rust — the one accent */
+  --rust: #bb5230;
+  --rust-deep: #97401f;
+  --rust-tint: #e2bca6;
+
+  --line: rgba(22, 18, 14, 0.16);
+  --line-strong: rgba(22, 18, 14, 0.32);
+
+  --font-poster: var(--font-anton), sans-serif;
+  --font-heavy: var(--font-archivo), system-ui, sans-serif;
+  --font-body: var(--font-inter), system-ui, sans-serif;
+  --font-serif: var(--font-lora), Georgia, serif;
+  --font-script: var(--font-kaushan), cursive;
+
+  --step-caption: 0.75rem;
+  --step-small: 0.875rem;
+  --step-body: 1rem;
+  --step-lead: 1.1875rem;
+  --step-h2: 1.5rem;
+  --step-h1: 2.25rem;
+  --step-statement: clamp(1.75rem, 4vw, 2.75rem);
+  --step-poster: clamp(3rem, 11vw, 7rem);
+
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+  --s-9: 96px;
+
+  --r-sm: 6px;
+  --r-md: 12px;
+  --r-lg: 20px;
+  --r-pill: 999px;
+
+  --shadow-sm: 0 4px 14px rgba(22, 18, 14, 0.1);
+  --shadow-md: 0 18px 44px rgba(22, 18, 14, 0.16);
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 @theme inline {
-  --color-bg: var(--bg);
-  --color-bg-panel: var(--bg-panel);
-  --color-bg-panel-raised: var(--bg-panel-raised);
-  --color-border: var(--border);
-  --color-border-strong: var(--border-strong);
-  --color-text: var(--text);
-  --color-text-dim: var(--text-dim);
-  --color-text-faint: var(--text-faint);
-  --color-accent: var(--accent);
-  --color-accent-dim: var(--accent-dim);
-  --color-warn: var(--warn);
-  --color-danger: var(--danger);
-  --color-ok: var(--ok);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
+  --color-paper-100: var(--paper-100);
+  --color-paper-200: var(--paper-200);
+  --color-paper-300: var(--paper-300);
+  --color-paper-400: var(--paper-400);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-ghost: var(--ghost);
+  --color-rust: var(--rust);
+  --color-rust-deep: var(--rust-deep);
+  --color-rust-tint: var(--rust-tint);
+  --font-poster: var(--font-poster);
+  --font-heavy: var(--font-heavy);
+  --font-body: var(--font-body);
+  --font-serif: var(--font-serif);
+  --font-script: var(--font-script);
 }
 
 * {
@@ -42,23 +89,38 @@
 
 html,
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-sans);
+  background: var(--paper-200);
+  color: var(--ink);
+  font-family: var(--font-body);
+  line-height: 1.55;
 }
 
 body {
   min-height: 100dvh;
+  position: relative;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Paper grain — the reference's feTurbulence tile, ~5% opacity, multiply blend */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.05;
+  mix-blend-mode: multiply;
 }
 
 ::selection {
-  background: var(--accent-dim);
-  color: var(--text);
+  background: var(--rust-tint);
+  color: var(--ink);
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: 2px solid var(--rust);
+  outline-offset: 3px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -83,4 +145,24 @@ body {
 
 .rec-dot {
   animation: pulse-rec 1.6s ease-in-out infinite;
+}
+
+/* Sunburst — hand-painted rays, one signature device, used once (hero only) */
+.sunburst {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(760px, 120vw);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) rotate(-4deg);
+  z-index: 0;
+  pointer-events: none;
+  background: repeating-conic-gradient(
+    from 6deg at 50% 50%,
+    var(--rust) 0deg 6deg,
+    transparent 6deg 19deg
+  );
+  -webkit-mask-image: radial-gradient(ellipse 60% 55% at 50% 50%, #000 28%, transparent 70%);
+  mask-image: radial-gradient(ellipse 60% 55% at 50% 50%, #000 28%, transparent 70%);
+  opacity: 0.85;
 }

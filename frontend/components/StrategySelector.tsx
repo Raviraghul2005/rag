@@ -37,15 +37,24 @@ export function StrategySelector({ value, onChange }: Props) {
   }, []);
 
   return (
-    <label className="flex flex-col gap-1">
-      <span className="font-mono text-[11px] uppercase tracking-wider text-text-faint">
-        chunking strategy
+    <label className="flex flex-col gap-1.5">
+      <span
+        className="uppercase"
+        style={{ fontFamily: "var(--font-heavy)", fontWeight: 800, fontSize: "0.7rem", letterSpacing: ".1em", color: "var(--muted)" }}
+      >
+        Chunking strategy
       </span>
       <select
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value)}
         disabled={available.length === 0}
-        className="rounded border border-border-strong bg-bg-panel-raised px-3 py-2 font-mono text-sm text-text disabled:opacity-50"
+        className="rounded-(--r-md) px-3 py-2 disabled:opacity-50"
+        style={{
+          border: "1.5px solid var(--ink)",
+          background: "var(--paper-100)",
+          color: "var(--ink)",
+          fontSize: "var(--step-small)",
+        }}
       >
         {available.length === 0 && <option value="">loading…</option>}
         {available.map((name) => (
