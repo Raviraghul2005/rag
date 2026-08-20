@@ -9,6 +9,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.artifacts import ensure_artifacts
 from app.generation.generator import Generator
 from app.guardrails.grounding import GroundingVerifier
 from app.indexing.dense_index import DenseIndex
@@ -44,6 +45,12 @@ def _resolve_strategy(requested: str | None) -> str:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
+        # Ephemeral container disk (Render, a fresh Railway build with no volume
+        # attached) won't have data/ at all on a cold deploy — pull it from the HF
+        # dataset repo first (spec §16.2's reasoning, platform-agnostic). A no-op if
+        # a strategy's already built locally, so a warm Railway volume skips this.
+        ensure_artifacts(Path("data"), strategies=config.chunking.strategies)
+
         encoder = E5Encoder()
         retrievers: dict[str, Retriever] = {}
         # All strategies with a built index load at startup, not just the configured
