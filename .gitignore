@@ -10,6 +10,7 @@ backend/.pytest_cache/
 # secrets — never commit a key, the repo is public
 *.env
 .env*
+!.env.example
 *.key
 
 # OS
