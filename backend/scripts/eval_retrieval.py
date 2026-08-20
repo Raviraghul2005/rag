@@ -35,6 +35,16 @@ def load_answerable_queries(eval_set_path: Path) -> list[EvalQuery]:
     return queries
 
 
+def _source_doc_id(chunk_id: str) -> str:
+    """chunk_id is "{passage_id}::{strategy}::{index}" (app/chunking/base.py's
+    make_chunk) — relevant_passage_ids in the eval set are bare passage_ids. Recall/
+    nDCG/MRR need to compare at the passage level (a passage may have split into
+    several chunks; a hit on *any* of them counts), so this strips the chunking
+    suffix before scoring rather than comparing the two id formats directly, which
+    can never match and would silently score every query as a total miss."""
+    return chunk_id.rsplit("::", 2)[0]
+
+
 def percentile(values: list[float], p: float) -> float:
     if not values:
         return 0.0
@@ -69,7 +79,7 @@ def evaluate_strategy(
         start = time.perf_counter()
         result = retriever.retrieve(eq.query)
         latencies_ms.append((time.perf_counter() - start) * 1000)
-        retrieved_ids = [r.chunk_id for r in result.results]
+        retrieved_ids = [_source_doc_id(r.chunk_id) for r in result.results]
 
         bucket = per_language.setdefault(
             eq.language, {"recall@5": [], "ndcg@10": [], "mrr": []}
