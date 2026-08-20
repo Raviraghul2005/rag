@@ -16,7 +16,18 @@ class MetadataStore:
     def __init__(self, path: Path):
         self.path = path
         path.parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(str(path))
+        # check_same_thread=False: this store is built once (main thread, at startup)
+        # but read from inside app.pipeline's asyncio.to_thread(retriever.retrieve, ...)
+        # call, which runs on a worker thread from the default thread pool — a
+        # different thread than the one that opened the connection. Without this flag
+        # every single live request crashes with "SQLite objects created in a thread
+        # can only be used in that same thread" (caught by scripts/replay_benchmark.py,
+        # not by the unit tests, since those exercise the pipeline against fake
+        # retrievers that never touch a real sqlite connection at all). Safe here
+        # specifically because runtime access is read-only — add_all() (the only write
+        # path) only ever runs at build time, single-threaded, never concurrently with
+        # a live server.
+        self.conn = sqlite3.connect(str(path), check_same_thread=False)
         self.conn.execute(
             """
             CREATE TABLE IF NOT EXISTS chunks (

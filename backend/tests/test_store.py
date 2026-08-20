@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+
+import pytest
+
 from app.indexing.store import MetadataStore
 from app.models.chunk import Chunk
 
@@ -52,3 +56,21 @@ def test_context_vector_stripped_from_stored_extra(tmp_path):
     row = store.get_by_row(0)
     assert "context_vector" not in row["extra"]
     assert row["extra"]["filter_language"] == "hi"
+
+
+@pytest.mark.asyncio
+async def test_readable_from_a_worker_thread(tmp_path):
+    """Regression test: app/pipeline.py reads the store via
+    asyncio.to_thread(retriever.retrieve, ...), which runs on a different thread than
+    the one that constructed this connection (main thread, at app startup). Without
+    check_same_thread=False this raises "SQLite objects created in a thread can only
+    be used in that same thread" on every real request - caught by
+    scripts/replay_benchmark.py against the live index, not by any prior unit test,
+    since those all exercise the pipeline against fake retrievers that never touch a
+    real sqlite connection."""
+    store = MetadataStore(tmp_path / "meta.sqlite3")
+    store.add_all([_chunk(0)])
+
+    row = await asyncio.to_thread(store.get_by_row, 0)
+
+    assert row["chunk_id"] == "doc1::strat::0"
