@@ -3,8 +3,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-# Kept outside the OneDrive-synced repo tree — these are multi-hundred-MB files.
-HF_CACHE_DIR = Path(os.environ.get("RAINGOA_HF_CACHE", r"C:\dev-cache\raingoa\hf"))
+# Kept outside the repo tree — these are multi-hundred-MB files, and C: was down to
+# ~15GB free as of the project's move off OneDrive to D:.
+HF_CACHE_DIR = Path(os.environ.get("RAINGOA_HF_CACHE", r"D:\dev-cache\raingoa\hf"))
 
 # The dataset's own loader script is stale (it references .jsonl files that no longer
 # exist; the repo holds .parquet), and modern `datasets` won't execute repo scripts

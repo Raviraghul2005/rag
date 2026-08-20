@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import app.env_bootstrap  # noqa: F401 — must run before anything reads os.environ or HF_HOME
+
 import time
 
 from app.indexing.embeddings import E5Encoder

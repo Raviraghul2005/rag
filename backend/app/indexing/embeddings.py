@@ -12,9 +12,10 @@ from transformers import AutoTokenizer
 MODEL_ID = "intfloat/multilingual-e5-small"
 MAX_SEQ_LEN = 512  # verified: config.json max_position_embeddings
 
-# Kept outside the OneDrive-synced repo tree by default — model files churn the sync
-# client otherwise. Override with RAINGOA_MODEL_CACHE for a different location.
-_DEFAULT_CACHE = Path(os.environ.get("RAINGOA_MODEL_CACHE", r"C:\dev-cache\raingoa\models"))
+# Kept outside the repo tree by default (large, churny model files). D: has the room;
+# C: was down to ~15GB free as of the project's move off OneDrive. Override with
+# RAINGOA_MODEL_CACHE for a different location.
+_DEFAULT_CACHE = Path(os.environ.get("RAINGOA_MODEL_CACHE", r"D:\dev-cache\raingoa\models"))
 
 
 class E5Encoder:
