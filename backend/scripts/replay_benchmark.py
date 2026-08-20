@@ -64,13 +64,24 @@ def percentile(values: list[float], p: float) -> float:
 
 
 def summarize(label: str, timings_per_query: list[dict[str, float]]) -> dict:
+    """Not every query reaches every stage — one refused at the retrieval-confidence
+    gate never runs generate/grounding at all, so those stages are simply absent from
+    its StageTimings dict (app/pipeline.py never calls stage_timer for a stage that
+    doesn't execute). Backfilling a missing stage with 0.0 (an earlier version of this
+    function did) silently treats "never ran" as "ran instantly," which drags a
+    stage's median toward zero in proportion to how often queries get refused before
+    reaching it — exactly what happened once tau_abs got calibrated aggressively
+    enough that most of a 500-query sample never reaches generate/grounding at all.
+    Percentiles here are computed only over queries that actually executed each stage.
+    """
     stage_names = sorted({name for t in timings_per_query for name in t})
     totals = [sum(t.values()) for t in timings_per_query]
     per_stage = {
         stage: {
-            "p50": percentile([t.get(stage, 0.0) for t in timings_per_query], 50),
-            "p70": percentile([t.get(stage, 0.0) for t in timings_per_query], 70),
-            "p100": percentile([t.get(stage, 0.0) for t in timings_per_query], 100),
+            "p50": percentile([t[stage] for t in timings_per_query if stage in t], 50),
+            "p70": percentile([t[stage] for t in timings_per_query if stage in t], 70),
+            "p100": percentile([t[stage] for t in timings_per_query if stage in t], 100),
+            "n": sum(1 for t in timings_per_query if stage in t),
         }
         for stage in stage_names
     }
@@ -172,9 +183,9 @@ async def main_async() -> None:
 
     print("\n=== Warm run: total (ms) ===")
     print(f"  P50={warm_summary['total_ms']['p50']:.1f}  P70={warm_summary['total_ms']['p70']:.1f}  P100={warm_summary['total_ms']['p100']:.1f}")
-    print("=== Warm run: per-stage P50 (ms) ===")
+    print("=== Warm run: per-stage P50 (ms), n = queries that reached that stage ===")
     for stage, values in warm_summary["per_stage_ms"].items():
-        print(f"  {stage}: {values['p50']:.1f}")
+        print(f"  {stage}: {values['p50']:.1f}  (n={values['n']}/{warm_summary['n']})")
     print(f"\nWritten to {args.output}")
 
 

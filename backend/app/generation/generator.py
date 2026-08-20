@@ -75,6 +75,15 @@ class Generator:
     ):
         self.config = config
         self.max_retries = harness_config.max_retries
+        # Spec §12.5: "timeouts at every stage... exceeding a stage budget degrades
+        # gracefully rather than hanging." This value existed in config.harness since
+        # Phase 1 but nothing ever read it — a live benchmark run against the real
+        # index caught the gap directly: one Groq call hung for 515 SECONDS (P100 on
+        # a 500-query run) with nothing to stop it. Passed straight to the OpenAI
+        # client's own per-call timeout, so a stall raises promptly instead of hanging
+        # the underlying HTTP connection indefinitely; retry_with_backoff already
+        # treats any exception (including a timeout) as a normal retryable failure.
+        self.generate_timeout_s = harness_config.stage_timeout_ms.generate / 1000
         self.groq = groq or groq_client()
         self.cerebras = cerebras or cerebras_client()
         self.groq_breaker = CircuitBreaker(
@@ -155,5 +164,6 @@ class Generator:
             messages=messages,
             max_tokens=self.config.max_tokens_request,
             response_format={"type": "json_object"},
+            timeout=self.generate_timeout_s,
             **kwargs,
         )

@@ -90,10 +90,17 @@ async def lifespan(app: FastAPI):
             GroundingVerifier() if config.guardrails.enable_grounding else None
         )
         resources["ready"] = True
+        resources["startup_error"] = None
         logger.info("pipeline resources loaded, strategies=%s", list(retrievers))
-    except Exception:
+    except Exception as exc:
         logger.exception("failed to load pipeline resources at startup")
         resources["ready"] = False
+        # Surfaced via /health — without this, a failed startup looks identical from
+        # the outside to "still loading" or "working but strategies not built yet".
+        # Diagnosing this exact ambiguity on the live Railway deployment (health said
+        # "ok", /strategies stayed empty, no way to tell why without dashboard log
+        # access) is why this exists.
+        resources["startup_error"] = f"{type(exc).__name__}: {exc}"
 
     yield
     resources.clear()
@@ -117,9 +124,19 @@ app.add_middleware(
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    # Real model/index/provider state wires in during deployment (Phase 11)
-    return {"status": "ok"}
+def health() -> dict[str, object]:
+    """Reports real startup state (spec §16.2), not just process liveness — a bare
+    "ok" here was indistinguishable from "still loading" or "artifact pull silently
+    failing" when debugging the live Railway deployment with no dashboard log access.
+    `status` stays "ok" once the process is up and answering, independent of whether
+    the pipeline itself finished loading — a judge's health-check ping shouldn't read
+    as a failure just because indexing is still warming up."""
+    return {
+        "status": "ok",
+        "pipeline_ready": resources.get("ready", False),
+        "strategies_loaded": list(resources.get("retrievers", {})),
+        "startup_error": resources.get("startup_error"),
+    }
 
 
 @app.get("/strategies")
