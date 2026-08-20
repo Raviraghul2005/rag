@@ -139,15 +139,21 @@ def main() -> None:
         if (i + 1) % 50 == 0:
             print(f"  {i + 1}/{len(labeled_queries)} scored", flush=True)
 
-    tau_abs_grid = [0.0, 0.002, 0.005, 0.008, 0.01, 0.015, 0.02, 0.03]
-    tau_margin_grid = [0.0, 0.002, 0.005, 0.008, 0.01, 0.015, 0.02]
+    tau_abs_grid = [0.0, 0.002, 0.005, 0.008, 0.01, 0.015, 0.02, 0.03, 0.04, 0.05, 0.07, 0.1]
+    tau_margin_grid = [0.0, 0.002, 0.005, 0.008, 0.01, 0.015, 0.02, 0.03, 0.04]
 
     sweep = [
         evaluate_threshold(scored, tau_abs, tau_margin)
         for tau_abs in tau_abs_grid
         for tau_margin in tau_margin_grid
     ]
-    best = max(sweep, key=lambda r: r["abstain_f1"])
+    # Picking by abstain_f1 alone rewards a degenerate "refuse every query" policy: it
+    # trivially maximizes abstain precision/recall by never answering anything, which
+    # a live check on this exact sweep confirmed (tp=0, fn=200 — zero answerable
+    # queries ever got through). answer_f1 + abstain_f1 requires both directions to be
+    # decent simultaneously, which is the actual goal — a gate that abstains well *and*
+    # still answers most of what it should.
+    best = max(sweep, key=lambda r: r["answer_f1"] + r["abstain_f1"])
 
     output = {
         "strategy": args.strategy,
@@ -159,7 +165,7 @@ def main() -> None:
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=2)
 
-    print("\n=== Best operating point (by abstain_f1) ===")
+    print("\n=== Best operating point (by answer_f1 + abstain_f1) ===")
     print(f"  tau_abs={best['tau_abs']}  tau_margin={best['tau_margin']}")
     print(
         f"  answer:   precision={best['answer_precision']:.3f} "

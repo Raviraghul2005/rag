@@ -18,8 +18,14 @@ retrieval:
   ef_search: 64
 
 guardrails:
-  tau_abs: null          # calibrated, not guessed — run scripts/calibrate_guardrails.py
-  tau_margin: null       # calibrated, not guessed — run scripts/calibrate_guardrails.py
+  # Calibrated against 410 labeled queries (200 answerable, 200 corpus-excluded held-out,
+  # 10 off-topic) on the served strategy (recursive_512) via scripts/calibrate_guardrails.py:
+  # answer f1=0.593 (p=0.523 r=0.685), abstain f1=0.475 (p=0.574 r=0.405). Picked by
+  # maximizing answer_f1 + abstain_f1, not abstain_f1 alone — that alone rewards a
+  # degenerate "refuse every query" policy (verified: it produced tp=0, fn=200 on the
+  # first run). Full sweep: data/calibration_results.json.
+  tau_abs: 0.03
+  tau_margin: 0.0
   # 0.5 is not a hand-picked guess: a live sanity check of this exact model
   # (MoritzLaurer/mDeBERTa-v3-base-mnli-xnli) showed genuinely-entailed pairs scoring
   # >0.99 and contradicted pairs <0.001 — the score distribution is bimodal and widely
