@@ -11,10 +11,10 @@ config = load_config()
 
 app = FastAPI(title="RAGInGoa")
 
-# Vercel prod domain gets added once deployed (Phase 11) — never "*", the key-leak
-# concern in spec §4 depends on this staying an explicit allowlist.
+# Never "*" — the key-leak concern in spec §4 depends on this staying an explicit allowlist.
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "https://frontend-lilac-two-49.vercel.app",
 ]
 
 app.add_middleware(
