@@ -60,6 +60,57 @@ class E5Encoder:
     def encode_passages(self, texts: list[str]) -> np.ndarray:
         return self._encode([f"passage: {t}" for t in texts])
 
+    def encode_passages_with_context(self, chunks: list[str], document: str) -> np.ndarray:
+        """Late chunking: one forward pass over the whole document, then mean-pool each
+        chunk's own token range, so every chunk vector carries surrounding context.
+
+        Chunks beyond the model's 512-token window fall outside the encoded span and are
+        encoded standalone instead — reported rather than silently mislabeled.
+        """
+        encoded = self.tokenizer(
+            f"passage: {document}",
+            max_length=MAX_SEQ_LEN,
+            truncation=True,
+            return_offsets_mapping=True,
+            return_tensors="pt",
+        )
+        offsets = encoded.pop("offset_mapping")[0].tolist()
+        hidden = self.model(**encoded).last_hidden_state[0]
+
+        prefix_len = len("passage: ")
+        vectors: list[np.ndarray] = []
+        uncovered: list[int] = []
+        cursor = 0
+        for i, chunk_text in enumerate(chunks):
+            start = document.find(chunk_text, cursor)
+            if start == -1:
+                start = cursor
+            end = start + len(chunk_text)
+            cursor = end
+
+            token_ids = [
+                idx
+                for idx, (tok_start, tok_end) in enumerate(offsets)
+                if tok_end > tok_start  # skip special tokens, which map to (0, 0)
+                and tok_start - prefix_len < end
+                and tok_end - prefix_len > start
+            ]
+            if token_ids:
+                pooled = hidden[token_ids].mean(dim=0)
+                vectors.append(
+                    torch.nn.functional.normalize(pooled, p=2, dim=0).detach().numpy()
+                )
+            else:
+                uncovered.append(i)
+                vectors.append(np.zeros(hidden.shape[-1], dtype=np.float32))
+
+        if uncovered:
+            fallback = self.encode_passages([chunks[i] for i in uncovered])
+            for slot, vector in zip(uncovered, fallback):
+                vectors[slot] = vector
+
+        return np.vstack(vectors)
+
 
 def _mean_pool(last_hidden_state: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
     mask = attention_mask.unsqueeze(-1).expand(last_hidden_state.size()).float()
