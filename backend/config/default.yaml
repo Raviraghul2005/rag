@@ -1,6 +1,8 @@
 corpus:
   languages: [hi, bn, ta, te, kn, mr, gu, ml, pa, or, ur, ne, as, sa]
-  passages_per_language: null  # calibrated in Phase 1.5 from measured T4 throughput — never the spec's flat 50000 default, it doesn't fit the build window
+  passages_per_language: 10000  # calibrated from measured local throughput (438 passages/sec,
+                                 # e5-small int8) — see plan §5. Not the spec's flat 50000 default,
+                                 # but real headroom exists to raise this later if desired.
   seed: 42
 
 chunking:

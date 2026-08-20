@@ -18,6 +18,7 @@ dependencies = [
     "transformers>=4.44",
     "optimum[onnxruntime]>=1.22",
     "faiss-cpu>=1.8",
+    "datasets>=2.20",
 ]
 
 [project.optional-dependencies]
