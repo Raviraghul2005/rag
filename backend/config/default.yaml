@@ -18,9 +18,18 @@ retrieval:
   ef_search: 64
 
 guardrails:
-  tau_abs: null          # calibrated, not guessed
-  tau_margin: null       # calibrated, not guessed
-  grounding_threshold: null
+  tau_abs: null          # calibrated, not guessed — run scripts/calibrate_guardrails.py
+  tau_margin: null       # calibrated, not guessed — run scripts/calibrate_guardrails.py
+  # 0.5 is not a hand-picked guess: a live sanity check of this exact model
+  # (MoritzLaurer/mDeBERTa-v3-base-mnli-xnli) showed genuinely-entailed pairs scoring
+  # >0.99 and contradicted pairs <0.001 — the score distribution is bimodal and widely
+  # separated, so the threshold's exact position barely matters between roughly 0.05
+  # and 0.95. Left as a midpoint rather than run through calibrate_guardrails.py, which
+  # only sweeps tau_abs/tau_margin per spec §11.2's explicit "both thresholds" wording
+  # (§11.3 doesn't carry the same calibration mandate). Without this, enable_grounding:
+  # true was a no-op — app/pipeline.py's gate only fires when grounding_threshold is
+  # not None, and null (the original placeholder) silently skipped it every time.
+  grounding_threshold: 0.5
   enable_input: true
   enable_retrieval_gate: true
   enable_grounding: true

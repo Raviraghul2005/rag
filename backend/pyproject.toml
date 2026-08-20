@@ -16,6 +16,13 @@ dependencies = [
     "huggingface-hub>=0.25",
     "python-dotenv>=1.0",
     "transformers>=4.44",
+    # torch is a direct runtime import (app/guardrails/grounding.py's plain-PyTorch
+    # inference, app/indexing/embeddings.py's ONNX export step) - not just an optimum/
+    # transformers transitive dependency, so it must be listed explicitly or a fresh
+    # `pip install -e .` (a Docker build) silently omits it and the app ImportErrors on
+    # its very first request. CPU build only (see Dockerfile's --extra-index-url) -
+    # this container has no GPU and the default PyPI wheel is a multi-GB CUDA build.
+    "torch>=2.5",
     "optimum[onnxruntime]>=1.22",
     "faiss-cpu>=1.8",
     "datasets>=2.20",

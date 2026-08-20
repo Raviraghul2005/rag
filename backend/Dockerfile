@@ -6,7 +6,9 @@ COPY pyproject.toml ./
 COPY app ./app
 COPY config ./config
 
-RUN pip install --no-cache-dir -e .
+# --extra-index-url pulls the CPU-only torch wheel (a few hundred MB) instead of
+# PyPI's default CUDA build (multiple GB, useless on this container - no GPU here)
+RUN pip install --no-cache-dir -e . --extra-index-url https://download.pytorch.org/whl/cpu
 
 EXPOSE 7860
 
