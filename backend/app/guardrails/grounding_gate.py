@@ -11,6 +11,7 @@ def grounding_gate(
     generated: GeneratedAnswer,
     context: list[ScoredChunk],
     threshold: float,
+    question: str = "",
 ) -> tuple[GuardrailOutcome, float]:
     """Does the retrieved context actually entail the generated answer (spec §11.3)?
     Returns (outcome, entailment_probability) so the probability gets logged even when
@@ -23,6 +24,15 @@ def grounding_gate(
     full retrieved context rather than skipping the check — a model that fabricates an
     answer with no citations should still fail entailment against real context, not
     get a free pass for omitting citations.
+
+    The hypothesis is the question and answer joined, not the answer alone. An NLI
+    model scores whether the premise entails a *claim*, and spec §10's 60-token answer
+    cap pushes the generator toward terse fragments that aren't claims at all — a bare
+    "176 मील" has no subject to entail. Measured on a real case where the passage
+    states the distance explicitly: answer alone scored 0.007 (a false rejection of a
+    correct answer), question+answer scored 0.994. Crucially this does not soften the
+    guardrail — on the same passage a wrong "500 मील" scores 0.0002 and an irrelevant
+    answer 0.0006, both still far below threshold.
     """
     if generated.answer is None:
         return GuardrailOutcome(allowed=False, reason="no_answer_to_verify"), 0.0
@@ -33,7 +43,8 @@ def grounding_gate(
         return GuardrailOutcome(allowed=False, reason="no_context_to_verify_against"), 0.0
 
     premise = " ".join(premise_chunks)
-    probability = verifier.entailment_probability(premise, generated.answer)
+    hypothesis = f"{question} {generated.answer}".strip() if question else generated.answer
+    probability = verifier.entailment_probability(premise, hypothesis)
     if probability < threshold:
         return GuardrailOutcome(allowed=False, reason="ungrounded"), probability
     return GuardrailOutcome(allowed=True, reason="ok"), probability

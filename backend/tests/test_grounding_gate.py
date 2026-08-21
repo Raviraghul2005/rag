@@ -89,3 +89,28 @@ def test_no_context_at_all_fails_without_calling_verifier():
     assert outcome.allowed is False
     assert outcome.reason == "no_context_to_verify_against"
     assert verifier.calls == []
+
+
+def test_hypothesis_combines_question_and_answer():
+    """Regression: a terse answer alone isn't a claim an NLI model can verify. Measured
+    on a real case (passage stating a distance explicitly), the bare answer "176 मील"
+    scored 0.007 and was wrongly refused, while question+answer scored 0.994. The gate
+    must send the combined form."""
+    verifier = FakeVerifier(probability=0.9)
+    generated = GeneratedAnswer(answer="176 मील", cited_chunk_ids=["c1"], sufficient=True, provider="groq")
+    context = [_chunk("c1", "स्कॉट्सडेल से ग्रैंड कैन्यन तक की दूरी 176 मील है।")]
+
+    grounding_gate(verifier, generated, context, threshold=0.5, question="दूरी स्कॉट्सडेल से ग्रैंड कैन्यन तक")
+
+    hypothesis_used = verifier.calls[0][1]
+    assert "दूरी स्कॉट्सडेल से ग्रैंड कैन्यन तक" in hypothesis_used
+    assert "176 मील" in hypothesis_used
+
+
+def test_falls_back_to_answer_alone_when_no_question_given():
+    verifier = FakeVerifier(probability=0.9)
+    generated = GeneratedAnswer(answer="Delhi", cited_chunk_ids=["c1"], sufficient=True, provider="groq")
+
+    grounding_gate(verifier, generated, [_chunk("c1", "Delhi is the capital.")], threshold=0.5)
+
+    assert verifier.calls[0][1] == "Delhi"

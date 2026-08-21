@@ -164,7 +164,8 @@ async def run_pipeline(
                 # retrieve stage above: don't block the event loop for that long.
                 grounding_outcome, grounding_score = await asyncio.to_thread(
                     grounding_gate,
-                    grounding_verifier, generated, retrieval_result.results, guardrails.grounding_threshold,
+                    grounding_verifier, generated, retrieval_result.results,
+                    guardrails.grounding_threshold, request.transcript,
                 )
         except Exception:
             # Degradation ladder (spec §12.6): grounding model fails -> serve the
@@ -173,6 +174,26 @@ async def run_pipeline(
             grounding_outcome = None
 
         if grounding_outcome is not None and not grounding_outcome.allowed:
+            # Log the suppressed answer and what it was checked against. Without this,
+            # a grounding rejection is indistinguishable from the outside between "the
+            # model hallucinated and the guardrail correctly caught it" and "the
+            # guardrail false-positived on a good answer" — the response deliberately
+            # withholds the answer, so there was no way to tell which had happened.
+            # That ambiguity cost real debugging time; the answer is already discarded,
+            # so logging it leaks nothing the operator couldn't already see.
+            logger.warning(
+                "grounding rejected answer (score=%.4f, threshold=%.2f)",
+                grounding_score if grounding_score is not None else -1.0,
+                guardrails.grounding_threshold,
+                extra={
+                    "extra_fields": {
+                        "request_id": request.request_id,
+                        "suppressed_answer": generated.answer,
+                        "grounding_score": grounding_score,
+                        "cited_chunk_ids": generated.cited_chunk_ids,
+                    }
+                },
+            )
             return _refused(
                 request, timings, grounding_outcome.reason, strategy_used=strategy_used,
                 retrieval_top_score=top_score, retrieval_margin=margin, grounding_score=grounding_score,
