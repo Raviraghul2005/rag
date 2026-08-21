@@ -46,7 +46,10 @@ export function AnswerPanel({ response }: { response: PipelineResponse }) {
               type="button"
               onClick={() => setExpandedId(expandedId === chunk.chunk_id ? null : chunk.chunk_id)}
               aria-expanded={expandedId === chunk.chunk_id}
-              className="rounded-(--r-sm) px-3 py-1 uppercase"
+              // No `uppercase` here: chunk_id is a real identifier a reader may want to
+              // look up in the corpus, and CSS-uppercasing it silently renders a string
+              // that doesn't match what's actually stored.
+              className="rounded-(--r-sm) px-3 py-1"
               style={{
                 fontFamily: "var(--font-heavy)",
                 fontWeight: 700,

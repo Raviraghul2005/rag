@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AnswerPanel } from "@/components/AnswerPanel";
+import { CorpusGuide } from "@/components/CorpusGuide";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { LatencyHud } from "@/components/LatencyHud";
 import { MicButton, STATUS_LABEL } from "@/components/MicButton";
@@ -33,7 +34,7 @@ function SectionHead({ num, title, body }: { num: string; title: string; body?: 
 export default function Home() {
   const [language, setLanguage] = useState(AUTO_DETECT.sarvamCode);
   const [strategy, setStrategy] = useState<string | null>(null);
-  const { status, partialTranscript, finalTranscript, response, error, start, stop } =
+  const { status, partialTranscript, finalTranscript, response, error, start, stop, askText } =
     useVoiceSession();
 
   const handleMicClick = () => {
@@ -124,6 +125,14 @@ export default function Home() {
               {error}
             </p>
           )}
+        </div>
+
+        <div className="mt-4">
+          <CorpusGuide
+            language={language}
+            onPick={(question) => void askText(question, strategy)}
+            disabled={status === "processing" || status === "listening"}
+          />
         </div>
       </section>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { wsUrl } from "@/lib/config";
+import { apiUrl, wsUrl } from "@/lib/config";
 import type { PipelineResponse, ServerMessage } from "@/lib/types";
 
 export type VoiceStatus =
@@ -174,7 +174,41 @@ export function useVoiceSession() {
     }
   }, [teardownAudio, clearAnswerTimeout]);
 
+  // Text path to the same pipeline (POST /query rather than the STT WebSocket), so the
+  // example questions are one click away and the whole system stays demonstrable
+  // without a working microphone — which mattered during development when a faulty mic
+  // made every voice attempt look like an application failure.
+  const askText = useCallback(
+    async (question: string, strategy: string | null) => {
+      teardownAll();
+      setState({
+        ...INITIAL_STATE,
+        status: "processing",
+        finalTranscript: question,
+      });
+      try {
+        const res = await fetch(apiUrl("/query"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcript: question, strategy }),
+        });
+        if (!res.ok) {
+          throw new Error(`backend returned ${res.status}`);
+        }
+        const payload = (await res.json()) as PipelineResponse;
+        setState((prev) => ({ ...prev, status: "idle", response: payload }));
+      } catch (err) {
+        setState((prev) => ({
+          ...prev,
+          status: "error",
+          error: err instanceof Error ? err.message : "Request failed",
+        }));
+      }
+    },
+    [teardownAll]
+  );
+
   useEffect(() => teardownAll, [teardownAll]);
 
-  return { ...state, start, stop };
+  return { ...state, start, stop, askText };
 }
