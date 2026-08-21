@@ -11,9 +11,20 @@ export interface ExampleQuestion {
   byLanguage: Record<string, string>;
 }
 
+// Figures are read off the built corpus (data/corpus_stats.json), not estimated:
+// 140,032 passages, ~10,000 per language across 14 languages, 7,783 labelled eval
+// queries of which 1,183 are deliberately held out as unanswerable (spec §11.4's
+// abstention set).
 export const CORPUS_DESCRIPTION = {
-  what: "140,032 web passages from MS MARCO — real Bing search queries paired with the pages that answer them — machine-translated into 14 Indian languages.",
-  answers: "Factual lookups: definitions, distances, quantities, durations, health and general-knowledge facts.",
+  source: "ai4bharat/MSMARCO-XI",
+  what: "MS MARCO — real Bing search queries paired with the web passages that answer them — translated into 14 Indian languages by AI4Bharat.",
+  stats: [
+    { value: "140,032", label: "passages indexed" },
+    { value: "14", label: "languages, ~10k each" },
+    { value: "7,783", label: "labelled eval queries" },
+  ],
+  answers:
+    "Factual lookups of the kind people type into a search engine: definitions, distances, quantities, durations, health and general-knowledge facts.",
   refuses:
     "Anything outside those passages — personal questions, advice, opinions, or live information. It declines rather than inventing an answer, and shows the confidence score behind the decision.",
 };
@@ -123,6 +134,13 @@ export const OUT_OF_SCOPE_EXAMPLES = [
 
 const FALLBACK_LANGUAGE = "hi";
 
+// Deliberately script-diverse: Devanagari, Tamil, Bengali, Telugu, Perso-Arabic (RTL),
+// Kannada, Malayalam, Gurmukhi. Under "Auto-detect" the examples rotate through these
+// so the very first thing a visitor sees demonstrates the multilingual claim, instead
+// of five Hindi rows implying the system is Hindi-only — which is exactly how the
+// earlier Hindi-fallback version read.
+const AUTO_SHOWCASE_LANGUAGES = ["hi", "ta", "bn", "te", "ur", "kn", "ml", "pa"];
+
 /** Sarvam codes are BCP-47 ("hi-IN"); the corpus keys are bare ISO codes ("hi").
  *  Odia is the one mismatch — Sarvam says "od-IN", the corpus says "or". */
 export function corpusLanguageKey(sarvamCode: string): string {
@@ -131,10 +149,35 @@ export function corpusLanguageKey(sarvamCode: string): string {
   return bare === "od" ? "or" : bare;
 }
 
-export function examplesForLanguage(sarvamCode: string): { gloss: string; text: string }[] {
-  const key = corpusLanguageKey(sarvamCode);
-  return EXAMPLE_QUESTIONS.map((e) => ({
-    gloss: e.gloss,
-    text: e.byLanguage[key] ?? e.byLanguage[FALLBACK_LANGUAGE],
-  })).filter((e) => Boolean(e.text));
+export interface ResolvedExample {
+  gloss: string;
+  text: string;
+  languageCode: string;
+}
+
+export function examplesForLanguage(sarvamCode: string): ResolvedExample[] {
+  if (sarvamCode !== "auto") {
+    const key = corpusLanguageKey(sarvamCode);
+    return EXAMPLE_QUESTIONS.map((e) => ({
+      gloss: e.gloss,
+      text: e.byLanguage[key] ?? "",
+      languageCode: key,
+    })).filter((e) => Boolean(e.text));
+  }
+
+  // Auto-detect: give each example a different language, preferring an unused one from
+  // the showcase list so the set stays script-diverse even when a particular question
+  // is missing a translation (not every query_id covers all 14).
+  const used = new Set<string>();
+  return EXAMPLE_QUESTIONS.map((e) => {
+    const available = AUTO_SHOWCASE_LANGUAGES.filter((l) => e.byLanguage[l]);
+    const pick =
+      available.find((l) => !used.has(l)) ?? available[0] ?? Object.keys(e.byLanguage)[0];
+    if (pick) used.add(pick);
+    return {
+      gloss: e.gloss,
+      text: pick ? e.byLanguage[pick] : e.byLanguage[FALLBACK_LANGUAGE],
+      languageCode: pick ?? FALLBACK_LANGUAGE,
+    };
+  }).filter((e) => Boolean(e.text));
 }
