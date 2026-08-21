@@ -6,6 +6,10 @@ backend/.cache/
 backend/data/
 backend/*.egg-info/
 backend/.pytest_cache/
+backend/local_server.log
+
+# local dev server logs
+*.log
 
 # secrets — never commit a key, the repo is public
 *.env

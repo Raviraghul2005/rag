@@ -3,6 +3,7 @@ from __future__ import annotations
 import app.env_bootstrap  # noqa: F401 — must run before anything reads os.environ or HF_HOME
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -114,6 +115,12 @@ ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://frontend-lilac-two-49.vercel.app",
 ]
+# Local phone-on-same-WiFi testing (e.g. http://192.168.x.x:3000) needs its origin
+# allowed too, but a LAN IP is machine-specific and has no business being a permanent
+# entry in this file — set via env var for the duration of a local test session instead.
+_extra_origin = os.environ.get("RAINGOA_EXTRA_CORS_ORIGIN")
+if _extra_origin:
+    ALLOWED_ORIGINS.append(_extra_origin)
 
 app.add_middleware(
     CORSMiddleware,

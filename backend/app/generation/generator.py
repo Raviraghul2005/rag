@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 
 from openai import AsyncOpenAI
@@ -15,6 +16,7 @@ from app.models.retrieval import ScoredChunk
 from config.loader import GenerationConfig, HarnessConfig
 
 _JSON_BLOCK_RE = re.compile(r"\{.*\}", re.DOTALL)
+logger = logging.getLogger(__name__)
 
 
 def _parse_output(content: str | None) -> tuple[str | None, list[str], bool, bool]:
@@ -133,7 +135,16 @@ class Generator:
                 lambda: self._call(client, model, messages, reasoning_effort),
                 max_retries=self.max_retries,
             )
-        except RetryExhausted:
+        except RetryExhausted as exc:
+            # Silent before this: a failure here previously surfaced to the caller
+            # only as provider="none" with no logged reason anywhere, which turned
+            # "why is generation unavailable" into a manual reproduce-and-guess
+            # exercise (that's how the Groq daily token-limit exhaustion was found -
+            # not from a log line, from re-running the failing call by hand).
+            logger.warning(
+                "provider %s exhausted retries: %s", provider, exc.last_error,
+                extra={"extra_fields": {"provider": provider, "error": repr(exc.last_error)}},
+            )
             breaker.record_failure()
             return None
 

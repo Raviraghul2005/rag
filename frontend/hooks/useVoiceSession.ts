@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { wsUrl } from "@/lib/config";
 import type { PipelineResponse, ServerMessage } from "@/lib/types";
 
@@ -28,6 +28,11 @@ const INITIAL_STATE: VoiceSessionState = {
   error: null,
 };
 
+// Generation can take a while when providers are struggling (each retried with
+// backoff before falling through) — this is a safety net so the UI never waits
+// forever if the backend somehow never responds, not the expected happy-path time.
+const ANSWER_TIMEOUT_MS = 25000;
+
 export function useVoiceSession() {
   const [state, setState] = useState<VoiceSessionState>(INITIAL_STATE);
 
@@ -35,8 +40,22 @@ export function useVoiceSession() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const workletRef = useRef<AudioWorkletNode | null>(null);
+  const answerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const teardown = useCallback(() => {
+  const clearAnswerTimeout = useCallback(() => {
+    if (answerTimeoutRef.current !== null) {
+      clearTimeout(answerTimeoutRef.current);
+      answerTimeoutRef.current = null;
+    }
+  }, []);
+
+  // Stops audio capture only — the WebSocket stays open so the eventual "answer"
+  // message (which needs the backend to finish retrieval + generation first) can
+  // still arrive. Closing the socket here was the original bug: on "stop", it raced
+  // ahead of the backend's response and discarded it every single time, which is
+  // why nothing ever appeared to happen after recording — the transcript would show
+  // (sent before the socket died) but the answer never could.
+  const teardownAudio = useCallback(() => {
     workletRef.current?.disconnect();
     workletRef.current = null;
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -45,13 +64,18 @@ export function useVoiceSession() {
       void audioContextRef.current.close();
     }
     audioContextRef.current = null;
+  }, []);
+
+  const teardownAll = useCallback(() => {
+    teardownAudio();
+    clearAnswerTimeout();
     wsRef.current?.close();
     wsRef.current = null;
-  }, []);
+  }, [teardownAudio, clearAnswerTimeout]);
 
   const start = useCallback(
     async (sarvamLanguageCode: string, strategy: string | null) => {
-      teardown();
+      teardownAll();
       setState({ ...INITIAL_STATE, status: "requesting_mic" });
 
       let stream: MediaStream;
@@ -96,7 +120,13 @@ export function useVoiceSession() {
             }));
             break;
           case "answer":
-            setState((prev) => ({ ...prev, status: "listening", response: message.payload }));
+            // One question in, one answer out (push-to-talk) — the exchange is
+            // complete once this arrives, so close out rather than re-arm for
+            // another utterance the user never asked to continue.
+            clearAnswerTimeout();
+            setState((prev) => ({ ...prev, status: "idle", response: message.payload }));
+            wsRef.current?.close();
+            wsRef.current = null;
             break;
           case "stt_error":
             setState((prev) => ({ ...prev, error: message.message }));
@@ -109,6 +139,7 @@ export function useVoiceSession() {
       };
 
       ws.onclose = () => {
+        clearAnswerTimeout();
         setState((prev) => (prev.status === "error" ? prev : { ...prev, status: "idle" }));
       };
 
@@ -124,16 +155,26 @@ export function useVoiceSession() {
       source.connect(worklet);
       workletRef.current = worklet;
     },
-    [teardown]
+    [teardownAll, clearAnswerTimeout]
   );
 
   const stop = useCallback(() => {
+    teardownAudio();
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send("__end__");
+      setState((prev) => ({ ...prev, status: "processing" }));
+      clearAnswerTimeout();
+      answerTimeoutRef.current = setTimeout(() => {
+        setState((prev) => ({ ...prev, status: "error", error: "No response from backend" }));
+        wsRef.current?.close();
+        wsRef.current = null;
+      }, ANSWER_TIMEOUT_MS);
+    } else {
+      setState((prev) => ({ ...prev, status: "idle" }));
     }
-    teardown();
-    setState((prev) => ({ ...prev, status: "idle" }));
-  }, [teardown]);
+  }, [teardownAudio, clearAnswerTimeout]);
+
+  useEffect(() => teardownAll, [teardownAll]);
 
   return { ...state, start, stop };
 }
