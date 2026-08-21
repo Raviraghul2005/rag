@@ -59,18 +59,37 @@ async def run_voice_session(
     async with SarvamSTTClient(language_code=language_code) as sarvam:
 
         async def forward_audio() -> None:
-            while True:
-                message = await client_ws.receive()
-                if message["type"] == "websocket.disconnect":
-                    return
-                audio_bytes = message.get("bytes")
-                if audio_bytes:
-                    await sarvam.send_audio(audio_bytes)
-                elif message.get("text") == "__end__":
-                    await sarvam.end()
-                    return
+            # Counters, not per-chunk logs: audio arrives ~10x/second, so logging each
+            # frame would bury everything else. One line per session at the end answers
+            # the question that actually matters when debugging "nothing happened" —
+            # did the browser's mic audio ever reach the server at all?
+            chunks = 0
+            total_bytes = 0
+            try:
+                while True:
+                    message = await client_ws.receive()
+                    if message["type"] == "websocket.disconnect":
+                        logger.info(
+                            "client disconnected after %d audio chunks (%d bytes)", chunks, total_bytes
+                        )
+                        return
+                    audio_bytes = message.get("bytes")
+                    if audio_bytes:
+                        chunks += 1
+                        total_bytes += len(audio_bytes)
+                        await sarvam.send_audio(audio_bytes)
+                    elif message.get("text") == "__end__":
+                        logger.info(
+                            "end signal received after %d audio chunks (%d bytes)", chunks, total_bytes
+                        )
+                        await sarvam.end()
+                        return
+            except Exception:
+                logger.exception("forward_audio failed after %d chunks", chunks)
+                raise
 
         async def handle_transcripts() -> None:
+            logger.info("sarvam session opened (language_code=%s)", language_code)
             async for event in sarvam.events():
                 if isinstance(event, SarvamError):
                     logger.warning("sarvam error: %s (code=%s)", event.message, event.code)
