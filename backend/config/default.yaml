@@ -54,7 +54,12 @@ generation:
   failover: cerebras
   failover_model: gpt-oss-120b
   max_tokens: 60             # reported/enforced answer-length cap (spec §10's lever)
-  max_tokens_request: 100    # raw API budget, leaves room for reasoning-model overhead
+  # 100 was too tight: live traffic hit "max completion tokens reached before
+  # generating a valid document" (json_validate_failed) — 100 has to cover
+  # reasoning-token overhead + JSON scaffolding + a 60-word answer, and
+  # Devanagari/Tamil/Telugu cost more tokens per word than English, so
+  # non-Latin answers were getting truncated mid-document. Raised for headroom.
+  max_tokens_request: 200    # raw API budget, leaves room for reasoning-model overhead
   context_token_budget: 1200
 
 harness:
