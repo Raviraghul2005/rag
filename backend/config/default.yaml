@@ -1,13 +1,23 @@
 corpus:
   languages: [hi, bn, ta, te, kn, mr, gu, ml, pa, or, ur, ne, as, sa]
-  passages_per_language: 10000  # calibrated from measured local throughput (438 passages/sec,
-                                 # e5-small int8) — see plan §5. Not the spec's flat 50000 default,
-                                 # but real headroom exists to raise this later if desired.
+  passages_per_language: 10000  # default for the 9 languages not scaled up (see overrides below)
+  # hi/ta/bn/te/mr raised to 150k passages each - the "must scale" languages plus the
+  # 3 largest remaining speaker populations, chosen after confirming the source dataset
+  # has ~97,941 rows/language available (only ~15% used at 150k, not a data ceiling).
+  # The other 9 languages stay at 10k. See scripts/build_corpus.py --overrides.
+  passages_per_language_overrides: {hi: 150000, ta: 150000, bn: 150000, te: 150000, mr: 150000}
   seed: 42
 
 chunking:
-  active_strategy: recursive_512
-  strategies: [fixed_256_overlap_64, recursive_512, semantic_breakpoint, late_chunking, metadata_aware]
+  # late_chunking had the best recall@5 in the retrieval eval (0.402-0.566 range across
+  # strategies, late_chunking on top) - now also the only strategy built against the
+  # scaled corpus. Serving all 5 strategies against a scaled corpus would ~5x the index
+  # memory footprint; narrowing to one keeps total RAM roughly flat vs the old 14x10k/
+  # 5-strategy build (measured: ~2.57GB old all-5 vs ~2.73GB new late_chunking-only at
+  # 150k/5 langs + 10k/9 langs). The other 4 strategies' indexes stay on disk at their
+  # old 10k/14-language build (not deleted) but are no longer loaded at startup.
+  active_strategy: late_chunking
+  strategies: [late_chunking]
 
 retrieval:
   dense_top_k: 50

@@ -12,16 +12,16 @@ export interface ExampleQuestion {
 }
 
 // Figures are read off the built corpus (data/corpus_stats.json), not estimated:
-// 140,032 passages, ~10,000 per language across 14 languages, 7,783 labelled eval
-// queries of which 1,183 are deliberately held out as unanswerable (spec §11.4's
-// abstention set).
+// 720,045 passages — Hindi and Tamil scaled to ~300k each, the other 12 languages at
+// ~10k each — 42,175 labelled eval queries of which 6,281 are deliberately held out as
+// unanswerable (spec §11.4's abstention set).
 export const CORPUS_DESCRIPTION = {
   source: "ai4bharat/MSMARCO-XI",
   what: "MS MARCO — real Bing search queries paired with the web passages that answer them — translated into 14 Indian languages by AI4Bharat.",
   stats: [
-    { value: "140,032", label: "passages indexed" },
-    { value: "14", label: "languages, ~10k each" },
-    { value: "7,783", label: "labelled eval queries" },
+    { value: "720,045", label: "passages indexed" },
+    { value: "300k", label: "each in Hindi & Tamil, 10k in 12 more" },
+    { value: "42,175", label: "labelled eval queries" },
   ],
   answers:
     "Factual lookups of the kind people type into a search engine: definitions, distances, quantities, durations, health and general-knowledge facts.",

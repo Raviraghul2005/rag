@@ -127,7 +127,12 @@ def main() -> None:
         "--n-per-language",
         type=int,
         required=True,
-        help="target corpus passages per language (not queries)",
+        help="target corpus passages per language (not queries) - default for languages not named in --overrides",
+    )
+    parser.add_argument(
+        "--overrides",
+        default="",
+        help="per-language target overrides, e.g. 'hi=150000,ta=150000' - takes precedence over --n-per-language for named languages",
     )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--held-out-frac", type=float, default=0.15)
@@ -139,15 +144,24 @@ def main() -> None:
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    overrides: dict[str, int] = {}
+    for pair in args.overrides.split(","):
+        pair = pair.strip()
+        if not pair:
+            continue
+        lang, _, n = pair.partition("=")
+        overrides[lang.strip()] = int(n.strip())
+
     all_corpus: list[CorpusPassage] = []
     all_eval: list[EvalQuery] = []
     per_language: dict[str, dict] = {}
 
     for lang in languages:
-        print(f"[{lang}] reading...", flush=True)
+        n_target = overrides.get(lang, args.n_per_language)
+        print(f"[{lang}] reading (target {n_target})...", flush=True)
         corpus, eval_queries, stats = process_language(
             lang,
-            n_passages=args.n_per_language,
+            n_passages=n_target,
             seed=args.seed,
             held_out_frac=args.held_out_frac,
             min_script_fraction=args.min_script_fraction,

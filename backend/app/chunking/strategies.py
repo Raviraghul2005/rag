@@ -163,6 +163,36 @@ class LateChunkingChunker:
             for i, c in enumerate(base)
         ]
 
+    def chunk_batch(self, docs: list[Document]) -> list[Chunk]:
+        """Same result as calling chunk() once per document, but encodes the whole
+        batch in one padded forward pass (see E5Encoder.encode_documents_with_context_batch)
+        instead of one GPU call per document — at ~1 chunk/doc that one-call-per-doc
+        pattern was ~840k tiny round trips dominating the whole index build."""
+        bases = [self._boundaries.chunk(doc) for doc in docs]
+        non_empty_idx = [i for i, base in enumerate(bases) if base]
+        if not non_empty_idx:
+            return []
+        doc_chunks = [(docs[i].text, [c.text for c in bases[i]]) for i in non_empty_idx]
+        pooled_batch = self.encoder.encode_documents_with_context_batch(doc_chunks)
+
+        result: list[Chunk] = []
+        for doc_idx, pooled in zip(non_empty_idx, pooled_batch):
+            doc = docs[doc_idx]
+            base = bases[doc_idx]
+            result.extend(
+                make_chunk(
+                    doc,
+                    c.text,
+                    c.char_start,
+                    c.char_end,
+                    self.name,
+                    i,
+                    context_vector=pooled[i].tolist(),
+                )
+                for i, c in enumerate(base)
+            )
+        return result
+
 
 class MetadataAwareChunker:
     """Respects passage boundaries and carries a filterable payload for pre-filtered ANN."""

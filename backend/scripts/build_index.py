@@ -55,9 +55,33 @@ def load_documents(corpus_path: Path) -> list[Document]:
     return docs
 
 
+# Benchmarked live on this GPU, length-sorted (see below), post-warm-up: 16->391.7/s,
+# 32->345.8/s, 64->391.4/s, 96->372.0/s, 128->400.7/s docs/sec. 128 both won outright
+# and matches ENCODE_BATCH_GPU's established value, so no new constant to reason about.
+CHUNK_BATCH_GPU = 128
+
+
 def chunk_all(strategy_name: str, docs: list[Document], encoder: E5Encoder | None) -> list[Chunk]:
     strategy = get_strategy(strategy_name, encoder=encoder if requires_encoder(strategy_name) else None)
     chunks: list[Chunk] = []
+    if hasattr(strategy, "chunk_batch") and encoder is not None and encoder.device == "cuda":
+        batch_size = CHUNK_BATCH_GPU
+        # Padding pads every sequence in a batch to that batch's longest member, and
+        # attention cost scales with seq_len^2 -- an unsorted batch of docs with wildly
+        # different lengths wastes real compute on padding. Sorting by length first so
+        # each batch is length-homogeneous measured 2.3x faster than unsorted batching
+        # at the same batch size (332 vs 162 docs/sec at batch=256) -- final chunk order
+        # doesn't matter, every Chunk carries its own doc_id/chunk_index for identity.
+        order = sorted(range(len(docs)), key=lambda i: len(docs[i].text))
+        sorted_docs = [docs[i] for i in order]
+        for start in range(0, len(sorted_docs), batch_size):
+            batch = sorted_docs[start : start + batch_size]
+            chunks.extend(strategy.chunk_batch(batch))
+            done = min(start + batch_size, len(sorted_docs))
+            if (start // batch_size) % 10 == 0 or done == len(sorted_docs):
+                print(f"    chunked {done}/{len(sorted_docs)} docs -> {len(chunks)} chunks so far", flush=True)
+        return chunks
+
     for i, doc in enumerate(docs):
         chunks.extend(strategy.chunk(doc))
         if (i + 1) % 20000 == 0:
@@ -69,11 +93,23 @@ def dense_vectors_for(strategy_name: str, chunks: list[Chunk], encoder: E5Encode
     """Returns an (n_chunks, dim) float32 array. late_chunking already computed its
     context-pooled vectors during chunking (that's the whole point of the strategy) —
     reuse those instead of re-encoding chunk text standalone, which would throw away
-    the document context the strategy exists to capture."""
+    the document context the strategy exists to capture.
+
+    Pre-allocated and filled in place, freeing each chunk's stored copy as it's copied
+    in — at large corpus sizes (840k+ chunks), building a full Python list of every
+    chunk's vector via list-comprehension + np.vstack held two full copies of the data
+    in memory at once (the per-chunk copies still on `chunks`, plus vstack's own
+    concatenated output) and was enough to exhaust this machine's RAM outright.
+    """
     import numpy as np
 
     if strategy_name == "late_chunking":
-        return np.vstack([c.extra["context_vector"] for c in chunks]).astype("float32")
+        dim = len(chunks[0].extra["context_vector"])
+        vectors = np.empty((len(chunks), dim), dtype="float32")
+        for i, c in enumerate(chunks):
+            vectors[i] = c.extra["context_vector"]
+            c.extra["context_vector"] = None
+        return vectors
 
     batch_size = ENCODE_BATCH_GPU if encoder.device == "cuda" else ENCODE_BATCH_CPU
     vectors = []

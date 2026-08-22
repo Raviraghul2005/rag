@@ -143,6 +143,80 @@ class E5Encoder:
 
         return np.vstack(vectors)
 
+    def encode_documents_with_context_batch(
+        self, doc_chunks: list[tuple[str, list[str]]]
+    ) -> list[np.ndarray]:
+        """Batched version of encode_passages_with_context: one padded forward pass over
+        several documents at once instead of one model call per document.
+
+        Late chunking's real cost isn't compute (a single ~512-token forward pass is
+        cheap) — it's that build_index.py calls encode_passages_with_context once per
+        document, and with ~1 chunk/doc that's ~840k separate tiny GPU round trips
+        (tokenize + kernel launch + sync), each paying fixed overhead for almost no
+        actual work. Batching amortizes that fixed cost across many documents in one
+        call. The per-chunk mean-pooling math below is identical to the single-document
+        method — only the tokenizer/model call is batched, so results for a given
+        document are the same (up to ordinary GPU float non-determinism) regardless of
+        which other documents share its batch, since attention_mask already isolates
+        each sequence from the padding around it.
+        """
+        documents = [d for d, _ in doc_chunks]
+        encoded = self.tokenizer(
+            [f"passage: {d}" for d in documents],
+            max_length=MAX_SEQ_LEN,
+            padding=True,
+            truncation=True,
+            return_offsets_mapping=True,
+            return_tensors="pt",
+        )
+        offsets_batch = encoded.pop("offset_mapping").tolist()
+        if self.device == "cuda":
+            encoded = {k: v.to("cuda") for k, v in encoded.items()}
+            with torch.no_grad():
+                hidden_batch = self.model(**encoded).last_hidden_state
+        else:
+            hidden_batch = self.model(**encoded).last_hidden_state
+
+        prefix_len = len("passage: ")
+        per_doc_vectors: list[list[np.ndarray | None]] = []
+        uncovered: list[tuple[int, int]] = []  # (doc_idx, chunk_idx)
+
+        for doc_idx, (document, chunks) in enumerate(doc_chunks):
+            offsets = offsets_batch[doc_idx]
+            hidden = hidden_batch[doc_idx]
+            vectors: list[np.ndarray | None] = []
+            cursor = 0
+            for i, chunk_text in enumerate(chunks):
+                start = document.find(chunk_text, cursor)
+                if start == -1:
+                    start = cursor
+                end = start + len(chunk_text)
+                cursor = end
+
+                token_ids = [
+                    idx
+                    for idx, (tok_start, tok_end) in enumerate(offsets)
+                    if tok_end > tok_start
+                    and tok_start - prefix_len < end
+                    and tok_end - prefix_len > start
+                ]
+                if token_ids:
+                    pooled = hidden[token_ids].mean(dim=0)
+                    normalized = torch.nn.functional.normalize(pooled, p=2, dim=0)
+                    vectors.append(normalized.float().detach().cpu().numpy())
+                else:
+                    uncovered.append((doc_idx, i))
+                    vectors.append(None)
+            per_doc_vectors.append(vectors)
+
+        if uncovered:
+            fallback_texts = [doc_chunks[d][1][c] for d, c in uncovered]
+            fallback = self.encode_passages(fallback_texts)
+            for (d, c), vector in zip(uncovered, fallback):
+                per_doc_vectors[d][c] = vector
+
+        return [np.vstack(vectors) for vectors in per_doc_vectors]
+
 
 def _mean_pool(last_hidden_state: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
     mask = attention_mask.unsqueeze(-1).expand(last_hidden_state.size()).float()
